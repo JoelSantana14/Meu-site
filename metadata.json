@@ -1,0 +1,6 @@
+{
+  "name": "ImobiPro CRM & Imóveis",
+  "description": "Portal imobiliário de Joel Santana Corretor de Imóveis para compra e locação em São José do Rio Preto e região, com vitrine de imóveis, CRM completo e ferramentas de gestão.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

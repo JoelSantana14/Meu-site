@@ -1,0 +1,6 @@
+# robots.txt para Joel Santana Corretor de Imóveis
+# São José do Rio Preto e Região - SP
+User-agent: *
+Allow: /
+
+Sitemap: https://joelsantanacorretor.com.br/sitemap.xml

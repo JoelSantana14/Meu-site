@@ -1,0 +1,147 @@
+{
+  "entities": {
+    "users": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "role": { "type": "string" },
+          "phone": { "type": "string" },
+          "whatsapp": { "type": "string" },
+          "avatar": { "type": "string" },
+          "commissionRate": { "type": "number" },
+          "bio": { "type": "string" },
+          "creci": { "type": "string" },
+          "cnae": { "type": "string" },
+          "secondaryPhone": { "type": "string" },
+          "address": { "type": "string" }
+        },
+        "required": ["id", "name", "email", "role"]
+      }
+    },
+    "properties": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "code": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "type": { "type": "string" },
+          "purpose": { "type": "string" },
+          "price": { "type": "number" },
+          "areaSqM": { "type": "number" },
+          "bedrooms": { "type": "number" },
+          "bathrooms": { "type": "number" },
+          "suites": { "type": "number" },
+          "parkingSpaces": { "type": "number" },
+          "highlight": { "type": "string" },
+          "status": { "type": "string" },
+          "agentId": { "type": "string" },
+          "createdAt": { "type": "string" }
+        },
+        "required": ["id", "code", "title", "price", "status"]
+      }
+    },
+    "leads": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "phone": { "type": "string" },
+          "source": { "type": "string" },
+          "stage": { "type": "string" },
+          "agentId": { "type": "string" },
+          "createdAt": { "type": "string" },
+          "updatedAt": { "type": "string" }
+        },
+        "required": ["id", "name", "stage"]
+      }
+    },
+    "visits": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "leadId": { "type": "string" },
+          "propertyId": { "type": "string" },
+          "agentId": { "type": "string" },
+          "date": { "type": "string" },
+          "time": { "type": "string" },
+          "status": { "type": "string" },
+          "createdAt": { "type": "string" }
+        },
+        "required": ["id", "date", "time", "status"]
+      }
+    },
+    "commissions": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "propertyId": { "type": "string" },
+          "agentId": { "type": "string" },
+          "saleValue": { "type": "number" },
+          "paymentStatus": { "type": "string" }
+        },
+        "required": ["id", "saleValue", "paymentStatus"]
+      }
+    },
+    "chatMessages": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "senderId": { "type": "string" },
+          "senderName": { "type": "string" },
+          "channel": { "type": "string" },
+          "text": { "type": "string" },
+          "timestamp": { "type": "string" }
+        },
+        "required": ["id", "senderId", "text", "timestamp"]
+      }
+    },
+    "crmTasks": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "leadId": { "type": "string" },
+          "leadName": { "type": "string" },
+          "leadPhone": { "type": "string" },
+          "agentId": { "type": "string" },
+          "agentName": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "dueDate": { "type": "string" },
+          "dueTime": { "type": "string" },
+          "priority": { "type": "string" },
+          "taskType": { "type": "string" },
+          "status": { "type": "string" },
+          "completedAt": { "type": "string" },
+          "completedBy": { "type": "string" },
+          "createdAt": { "type": "string" }
+        },
+        "required": ["id", "leadId", "title", "dueDate", "status"]
+      }
+    },
+    "siteConfig": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "companyName": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": "string" },
+          "colorTheme": { "type": "string" },
+          "contourColorHex": { "type": "string" },
+          "detailsColorHex": { "type": "string" },
+          "enableCustomContours": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}
