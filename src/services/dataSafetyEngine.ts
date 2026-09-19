@@ -3,7 +3,7 @@ import { db } from '../lib/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const DB_NAME = 'ImobiPro_DurableDataStore_v1';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORES = [
   'properties',
@@ -20,7 +20,8 @@ const STORES = [
   'configurableOptions',
   'systemBackups',
   'changeHistory',
-  'pendingSyncQueue'
+  'pendingSyncQueue',
+  'siteStats'
 ] as const;
 
 type StoreName = typeof STORES[number];
@@ -113,6 +114,30 @@ export async function idbGetAll<T>(storeName: StoreName): Promise<T[]> {
   } catch (err) {
     console.warn(`[DataSafetyEngine] idbGetAll error on ${storeName}:`, err);
     return [];
+  }
+}
+
+/**
+ * Get a single item from a store by ID
+ */
+export async function idbGet<T>(storeName: StoreName, id: string): Promise<T | null> {
+  try {
+    const idb = await openIndexedDB();
+    return new Promise((resolve, reject) => {
+      const tx = idb.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.get(id);
+      req.onsuccess = () => resolve((req.result as T) || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (err) {
+    console.warn(`[DataSafetyEngine] idbGet error on ${storeName}:`, err);
+    try {
+      const fb = localStorage.getItem(`idb_fallback_${storeName}_${id}`);
+      return fb ? JSON.parse(fb) : null;
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -395,7 +420,7 @@ export function cleanForFirestore<T>(obj: T): T {
  * If size exceeds maxBytes, gracefully trims or adapts large arrays (such as images)
  * to keep the document writable and prevent Firestore serialization crashes.
  */
-export function ensureSafeFirestoreDocumentSize<T extends Record<string, any>>(obj: T, maxBytes = 850000): T {
+export function ensureSafeFirestoreDocumentSize<T extends Record<string, any>>(obj: T, maxBytes = 950000): T {
   try {
     const str = JSON.stringify(obj);
     const size = new TextEncoder().encode(str).length;

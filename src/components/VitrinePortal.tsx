@@ -43,6 +43,8 @@ import {
   UserCheck,
   PlusCircle,
   Globe,
+  BarChart3,
+  Layers,
   Image as ImageIcon
 } from 'lucide-react';
 
@@ -112,8 +114,15 @@ export const VitrinePortal: React.FC = () => {
     setActiveTab,
     selectedPropertyDetail,
     setSelectedPropertyDetail,
+    siteStats,
+    recordSitePageView,
     t
   } = useApp();
+
+  // Track visitor on mount
+  useEffect(() => {
+    recordSitePageView();
+  }, []);
 
   // Search filter states
   const [purposeTab, setPurposeTab] = useState<PropertyPurpose | 'todos'>('venda');
@@ -383,9 +392,14 @@ export const VitrinePortal: React.FC = () => {
 
   // Filter properties
   const filteredProperties = properties.filter(p => {
-    // Deduplication rule: If the enterprise is already featured in the Exclusive Launch VIP section,
-    // do not show it again in the general catalog listing.
-    if (isExclusiveActive && launchTitleLower && p.title.toLowerCase().includes(launchTitleLower)) {
+    // Hide archived properties from public catalog
+    if (p.archived) return false;
+
+    // Strict deduplication against active exclusive launch ONLY if ID or full exact title matches
+    if (isExclusiveActive && siteConfig.exclusiveLaunch?.propertyId && p.id === siteConfig.exclusiveLaunch.propertyId) {
+      return false;
+    }
+    if (isExclusiveActive && launchTitleLower && launchTitleLower.length > 5 && p.title.toLowerCase().trim() === launchTitleLower) {
       return false;
     }
 
@@ -397,21 +411,30 @@ export const VitrinePortal: React.FC = () => {
       return aiSearchResult.matchedPropertyIds.includes(p.id);
     }
 
-    if (purposeTab !== 'todos' && p.purpose !== purposeTab) return false;
-    if (typeFilter !== 'todos' && p.type !== typeFilter) return false;
+    // Purpose filter (venda / aluguel / todos)
+    if (purposeTab !== 'todos' && p.purpose?.toLowerCase() !== purposeTab.toLowerCase()) {
+      return false;
+    }
+
+    // Type filter
+    if (typeFilter !== 'todos' && p.type?.toLowerCase() !== typeFilter.toLowerCase()) {
+      return false;
+    }
+
     if (maxPrice !== '' && p.price > maxPrice) return false;
-    if (bedroomsMin !== '' && p.bedrooms < bedroomsMin) return false;
+    if (bedroomsMin !== '' && (p.bedrooms || 0) < bedroomsMin) return false;
 
     if (neighborhoodSearch.trim()) {
       const term = neighborhoodSearch.toLowerCase();
-      const matchTitle = p.title.toLowerCase().includes(term);
-      const matchCode = p.code.toLowerCase().includes(term);
-      const matchNeigh = p.address.neighborhood.toLowerCase().includes(term);
-      const matchCity = p.address.city.toLowerCase().includes(term);
-      if (!matchTitle && !matchCode && !matchNeigh && !matchCity) return false;
+      const matchTitle = (p.title || '').toLowerCase().includes(term);
+      const matchCode = (p.code || '').toLowerCase().includes(term);
+      const matchNeigh = (p.address?.neighborhood || '').toLowerCase().includes(term);
+      const matchCity = (p.address?.city || '').toLowerCase().includes(term);
+      const matchDesc = (p.description || '').toLowerCase().includes(term);
+      if (!matchTitle && !matchCode && !matchNeigh && !matchCity && !matchDesc) return false;
     }
 
-    if (collectionFilter !== 'todos' && p.type !== collectionFilter) {
+    if (collectionFilter !== 'todos' && p.type?.toLowerCase() !== collectionFilter.toLowerCase()) {
       return false;
     }
 
@@ -540,6 +563,36 @@ export const VitrinePortal: React.FC = () => {
 
   return (
     <div className="space-y-12 pb-16">
+
+      {/* ==================== EXCLUSIVE ADMIN VISITOR COUNTER BANNER ==================== */}
+      {(currentUser?.role === 'admin' || currentUser?.isMasterAdmin) && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <div className="bg-slate-900/95 backdrop-blur-md text-white py-2.5 px-4 sm:px-5 rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-amber-500/40 text-xs">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="font-black text-amber-400 uppercase tracking-wider text-[10px] bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
+                🔒 Painel Admin (Tráfego do Site)
+              </span>
+              <span className="font-medium text-slate-200">
+                👁️ <strong className="text-white font-bold">{siteStats?.totalVisits?.toLocaleString('pt-BR') || 0}</strong> visitas registradas (<span className="text-emerald-400 font-bold">+{siteStats?.todayVisits || 0} hoje</span> • {siteStats?.uniqueVisitors || 0} visitantes únicos)
+              </span>
+              <span className="hidden md:inline text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
+                Visível somente para Administradores
+              </span>
+            </div>
+            <button
+              onClick={() => setActiveTab('estatisticas')}
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black rounded-xl text-[11px] transition-all flex items-center gap-1.5 shadow-md shrink-0 cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Ver Gráficos & Estatísticas</span>
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* ==================== HERO BANNER SECTION ==================== */}
       <section className="relative min-h-[380px] sm:min-h-[440px] flex items-center justify-center bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-900 overflow-hidden py-16 px-4 sm:px-6 lg:px-8 w-full">
@@ -721,6 +774,18 @@ export const VitrinePortal: React.FC = () => {
             {/* Search Purpose Tabs */}
             <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 overflow-x-auto max-w-full">
               <button
+                onClick={() => triggerFilterAnimation(() => { setOnlyFavoritesFilter(false); setPurposeTab('todos'); })}
+                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 ${
+                  !onlyFavoritesFilter && purposeTab === 'todos'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Layers className="w-4 h-4" />
+                <span>Todos os Imóveis</span>
+              </button>
+
+              <button
                 onClick={() => {
                   setOnlyFavoritesFilter(!onlyFavoritesFilter);
                 }}
@@ -747,9 +812,9 @@ export const VitrinePortal: React.FC = () => {
               </button>
 
               <button
-                onClick={() => triggerFilterAnimation(() => setPurposeTab('aluguel'))}
+                onClick={() => triggerFilterAnimation(() => { setOnlyFavoritesFilter(false); setPurposeTab('aluguel'); })}
                 className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 shrink-0 ${
-                  purposeTab === 'aluguel'
+                  !onlyFavoritesFilter && purposeTab === 'aluguel'
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
@@ -1059,9 +1124,18 @@ export const VitrinePortal: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <Maximize2 className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>{prop.areaSqM}m²</span>
+                        <span>{prop.areaSqM || prop.areaTerreno || prop.areaConstruida || 0}m²</span>
                       </div>
                     </div>
+
+                    {/* Secondary Area Badges if specified */}
+                    {(prop.areaTerreno || prop.areaConstruida || prop.areaComum) ? (
+                      <div className="flex items-center gap-1.5 flex-wrap -mt-2 text-[10px] text-slate-500 font-medium">
+                        {prop.areaTerreno ? <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">Terreno: {prop.areaTerreno}m²</span> : null}
+                        {prop.areaConstruida ? <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">Construída: {prop.areaConstruida}m²</span> : null}
+                        {prop.areaComum ? <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">Comum: {prop.areaComum}m²</span> : null}
+                      </div>
+                    ) : null}
 
                     {/* Price & Actions Row */}
                     <div className="pt-1 flex items-center justify-between gap-2">
@@ -2155,8 +2229,8 @@ export const VitrinePortal: React.FC = () => {
               {/* Specs Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl text-xs font-semibold">
                 <div>
-                  <span className="text-slate-400 text-[10px] uppercase block">Área Útil</span>
-                  <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaSqM} m²</span>
+                  <span className="text-slate-400 text-[10px] uppercase block">Área Útil / Privativa</span>
+                  <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaPrivativa || selectedPropertyDetail.areaSqM || 0} m²</span>
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase block">Dormitórios</span>
@@ -2170,6 +2244,32 @@ export const VitrinePortal: React.FC = () => {
                   <span className="text-slate-400 text-[10px] uppercase block">Vagas</span>
                   <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.parkingSpaces} vagas</span>
                 </div>
+
+                {/* Additional Areas if defined */}
+                {selectedPropertyDetail.areaTerreno ? (
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Área do Terreno</span>
+                    <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaTerreno} m²</span>
+                  </div>
+                ) : null}
+                {selectedPropertyDetail.areaConstruida ? (
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Área Construída</span>
+                    <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaConstruida} m²</span>
+                  </div>
+                ) : null}
+                {selectedPropertyDetail.areaComum ? (
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Área Comum</span>
+                    <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaComum} m²</span>
+                  </div>
+                ) : null}
+                {selectedPropertyDetail.areaTotal ? (
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase block">Área Total</span>
+                    <span className="text-slate-900 dark:text-white font-bold">{selectedPropertyDetail.areaTotal} m²</span>
+                  </div>
+                ) : null}
               </div>
 
               {/* Description */}

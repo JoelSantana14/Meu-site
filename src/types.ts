@@ -167,6 +167,13 @@ export interface Property {
   agentId: string;
   createdAt: string;
   
+  // Áreas e metragens detalhadas
+  areaTerreno?: number; // Tamanho / Área do Terreno em m²
+  areaConstruida?: number; // Área Construída em m²
+  areaComum?: number; // Área Comum em m²
+  areaPrivativa?: number; // Área Privativa em m²
+  areaTotal?: number; // Área Total em m²
+  
   // Specific fields for terrenos, chácaras, casas e condomínios
   testadaMeters?: number; // Metragem de frente do lote (terrenos, chácaras e casas)
   topografia?: TopografiaType; // plano, aclive, declive, irregular, outros
@@ -184,6 +191,25 @@ export interface Property {
   archivedAt?: string;
   archivedBy?: string;
   archiveReason?: string;
+}
+
+export interface DailyVisitStat {
+  date: string; // YYYY-MM-DD
+  visits: number;
+  uniques: number;
+}
+
+export interface SiteAnalyticsStats {
+  id: string; // 'site_stats'
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisits: number;
+  todayUniques: number;
+  todayDate: string; // YYYY-MM-DD
+  weeklyVisits: number;
+  monthlyVisits: number;
+  lastVisitedAt: string;
+  history?: DailyVisitStat[];
 }
 
 export type PipelineStage = 

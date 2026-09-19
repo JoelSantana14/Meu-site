@@ -40,11 +40,13 @@ const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6', '#e
 export const EstatisticasRelatorios: React.FC = () => {
   const {
     users,
+    currentUser,
     leads,
     visits,
     commissions,
     properties,
-    siteConfig
+    siteConfig,
+    siteStats
   } = useApp();
 
   const [selectedAgentId, setSelectedAgentId] = useState<string>('todos');
@@ -287,6 +289,98 @@ export const EstatisticasRelatorios: React.FC = () => {
           <span className="text-[11px] text-slate-500">{totalWonCount} negócios fechados com sucesso</span>
         </div>
       </div>
+
+      {/* ADMIN EXCLUSIVE: AUDIÊNCIA E CONTADOR DE VISITANTES DO SITE */}
+      {(currentUser?.role === 'admin' || currentUser?.isMasterAdmin) && (
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white p-6 rounded-3xl border border-amber-500/30 shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded-2xl">
+                <Users className="w-6 h-6" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-black tracking-tight text-white">
+                    Contador de Visitantes & Audiência Web
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-400/40 text-amber-300 font-mono text-[10px] font-bold uppercase tracking-wider">
+                    Privado Admin
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  Métricas em tempo real de acessos, visitantes únicos e engajamento da vitrine pública.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Monitoramento Ativo</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 space-y-1">
+              <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Total de Visitas</span>
+              <p className="text-2xl font-black text-amber-400">{(siteStats?.totalVisits || 0).toLocaleString('pt-BR')}</p>
+              <span className="text-[10px] text-slate-400">Páginas visualizadas no portal</span>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 space-y-1">
+              <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Visitantes Únicos</span>
+              <p className="text-2xl font-black text-cyan-400">{(siteStats?.uniqueVisitors || 0).toLocaleString('pt-BR')}</p>
+              <span className="text-[10px] text-slate-400">Dispositivos distintos conectados</span>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 space-y-1">
+              <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Visitas Hoje</span>
+              <p className="text-2xl font-black text-emerald-400">+{(siteStats?.todayVisits || 0).toLocaleString('pt-BR')}</p>
+              <span className="text-[10px] text-slate-400">{siteStats?.todayUniques || 0} únicos hoje</span>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 space-y-1">
+              <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider">Média Semanal</span>
+              <p className="text-2xl font-black text-violet-400">{(siteStats?.weeklyVisits || 0).toLocaleString('pt-BR')}</p>
+              <span className="text-[10px] text-slate-400">Tráfego dos últimos 7 dias</span>
+            </div>
+          </div>
+
+          {/* Visit History Mini Chart */}
+          {siteStats?.history && siteStats.history.length > 0 && (
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10 space-y-3">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Histórico Recente de Acessos Diários</h3>
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={siteStats.history} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorVisitas" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="colorUnicos" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8}/>
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
+                    <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickFormatter={(val) => val.split('-').slice(1).join('/')} />
+                    <YAxis stroke="#94a3b8" fontSize={10} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', fontSize: '11px', color: '#fff' }}
+                      labelFormatter={(label) => `Data: ${label}`}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '6px' }} />
+                    <Area type="monotone" dataKey="visits" name="Visitas Totais" stroke="#f59e0b" fillOpacity={1} fill="url(#colorVisitas)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="uniques" name="Visitantes Únicos" stroke="#06b6d4" fillOpacity={1} fill="url(#colorUnicos)" strokeWidth={2} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* CHARTS GRID ROW 1: Evolution of Sales & Broker Comparison */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
