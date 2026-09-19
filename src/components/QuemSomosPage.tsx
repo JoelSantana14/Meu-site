@@ -22,13 +22,13 @@ export const QuemSomosPage: React.FC = () => {
   const masterUser = users.find(u => u.isMasterAdmin || u.id === 'usr_master_joel' || (u.email && u.email.toLowerCase() === 'joelsantanaimoveis@gmail.com')) || users[0];
   const brokerName = siteConfig.brokerName || siteConfig.companyName || masterUser?.name || 'Joel Santana';
   const creci = siteConfig.brokerCreci || siteConfig.creciJuridico || masterUser?.creci || 'CRECI 12345-F';
-  const phone = siteConfig.brokerPhone || siteConfig.phone || masterUser?.phone || '(11) 98765-4321';
-  const whatsapp = siteConfig.brokerWhatsapp || siteConfig.whatsapp || masterUser?.whatsapp || '5511987654321';
+  const phone = siteConfig.brokerPhone || siteConfig.phone || masterUser?.phone || '(17) 99195-1473';
+  const whatsapp = siteConfig.brokerWhatsapp || siteConfig.whatsapp || masterUser?.whatsapp || '5517991951473';
   const email = siteConfig.brokerEmail || siteConfig.email || masterUser?.email || 'joelsantanaimoveis@gmail.com';
-  const address = siteConfig.brokerAddress || siteConfig.address || 'São Paulo - SP e Região';
+  const address = siteConfig.brokerAddress || siteConfig.address || 'São José do Rio Preto - SP e Região';
   const avatarUrl = (siteConfig.brokerAvatarUrl && !siteConfig.brokerAvatarUrl.includes('1560250097-0b93528c311a'))
     ? siteConfig.brokerAvatarUrl
-    : (masterUser?.avatar || siteConfig.brokerAvatarUrl || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80');
+    : ((masterUser?.avatar && !masterUser.avatar.includes('1560250097-0b93528c311a')) ? masterUser.avatar : '/images/joel_santana_avatar.jpg');
   const bio = siteConfig.brokerBio || 'Atuando há mais de 12 anos no mercado imobiliário com foco em transparência, avaliação justa de patrimônio e agilidade em financiamentos bancários.';
 
   const rawWhatsapp = whatsapp.replace(/\D/g, '');

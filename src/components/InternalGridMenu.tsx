@@ -293,7 +293,7 @@ export const InternalGridMenu: React.FC<InternalGridMenuProps> = ({ onClose, isM
         <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl border border-indigo-800/40 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <img
-              src={currentUser.avatar || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200'}
+              src={(currentUser.avatar && !currentUser.avatar.includes('1560250097-0b93528c311a')) ? currentUser.avatar : '/images/joel_santana_avatar.jpg'}
               alt={currentUser.name}
               className="w-10 h-10 rounded-xl object-cover border-2 border-indigo-400/60"
             />

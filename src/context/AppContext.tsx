@@ -665,9 +665,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             type: data.type || 'casa',
             purpose: data.purpose || 'venda',
             price: typeof data.price === 'number' ? data.price : 0,
-            images: Array.isArray(data.images) && data.images.length > 0 ? data.images : ['/images/house_with_pool_1789524615804.jpg'],
+            images: Array.isArray(data.images) && data.images.length > 0 ? data.images : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200'],
             features: Array.isArray(data.features) ? data.features : [],
-            address: data.address || { street: '', neighborhood: '', city: 'São Paulo', state: 'SP', zip: '' }
+            address: data.address || { street: '', neighborhood: '', city: 'São José do Rio Preto', state: 'SP', zip: '' }
           };
         }).filter((p): p is Property => p !== null && !(p as any)._deleted && !tombstones.has(p.id));
         

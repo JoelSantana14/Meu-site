@@ -439,6 +439,20 @@ export const VitrinePortal: React.FC = () => {
     }
 
     return true;
+  }).sort((a, b) => {
+    // 1. Highlight priority: super_destaque first, then destaque
+    const score = (prop: Property) => {
+      if (prop.highlight === 'super_destaque') return 3;
+      if (prop.highlight === 'destaque') return 2;
+      return 1;
+    };
+    const diff = score(b) - score(a);
+    if (diff !== 0) return diff;
+
+    // 2. Newest added first (by createdAt or ID timestamp)
+    const timeA = new Date(a.createdAt || 0).getTime() || (a.id.startsWith('prop_17') ? parseInt(a.id.replace('prop_', '')) : 0);
+    const timeB = new Date(b.createdAt || 0).getTime() || (b.id.startsWith('prop_17') ? parseInt(b.id.replace('prop_', '')) : 0);
+    return timeB - timeA;
   });
 
   // Pagination State & Logic
@@ -2036,7 +2050,7 @@ export const VitrinePortal: React.FC = () => {
         const masterUser = users.find(u => u.isMasterAdmin || u.id === 'usr_master_joel' || (u.email && u.email.toLowerCase() === 'joelsantanaimoveis@gmail.com')) || users[0];
         const displayAvatar = (siteConfig.brokerAvatarUrl && !siteConfig.brokerAvatarUrl.includes('1560250097-0b93528c311a'))
           ? siteConfig.brokerAvatarUrl
-          : (masterUser?.avatar || siteConfig.brokerAvatarUrl);
+          : ((masterUser?.avatar && !masterUser.avatar.includes('1560250097-0b93528c311a')) ? masterUser.avatar : '/images/joel_santana_avatar.jpg');
 
         return (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
@@ -2212,7 +2226,7 @@ export const VitrinePortal: React.FC = () => {
                 const captador = users.find(u => u.id === selectedPropertyDetail.agentId) || masterUser || users[0];
                 const captadorAvatar = (captador?.avatar && !captador.avatar.includes('1560250097-0b93528c311a'))
                   ? captador.avatar
-                  : ((siteConfig.brokerAvatarUrl && !siteConfig.brokerAvatarUrl.includes('1560250097-0b93528c311a')) ? siteConfig.brokerAvatarUrl : (masterUser?.avatar || captador?.avatar));
+                  : ((siteConfig.brokerAvatarUrl && !siteConfig.brokerAvatarUrl.includes('1560250097-0b93528c311a')) ? siteConfig.brokerAvatarUrl : ((masterUser?.avatar && !masterUser.avatar.includes('1560250097-0b93528c311a')) ? masterUser.avatar : '/images/joel_santana_avatar.jpg'));
 
                 return (
                   <div className="p-4 bg-indigo-50/80 dark:bg-indigo-950/50 rounded-2xl border border-indigo-200 dark:border-indigo-800 flex items-center gap-4 shadow-sm">

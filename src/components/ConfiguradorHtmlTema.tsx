@@ -377,12 +377,12 @@ export const ConfiguradorHtmlTema: React.FC = () => {
   const [brokerCreci, setBrokerCreci] = useState(siteConfig.brokerCreci || 'CRECI 12345-F');
   const [brokerCnai, setBrokerCnai] = useState(siteConfig.brokerCnai || 'CNAI 12345');
   const [brokerPhone, setBrokerPhone] = useState(siteConfig.brokerPhone || '(11) 98765-4321');
-  const [brokerWhatsapp, setBrokerWhatsapp] = useState(siteConfig.brokerWhatsapp || '5511987654321');
+  const [brokerWhatsapp, setBrokerWhatsapp] = useState(siteConfig.brokerWhatsapp || '5517991951473');
   const [brokerEmail, setBrokerEmail] = useState(siteConfig.brokerEmail || 'joelsantanaimoveis@gmail.com');
-  const [brokerAddress, setBrokerAddress] = useState(siteConfig.brokerAddress || 'São Paulo - SP');
-  const [brokerAvatarUrl, setBrokerAvatarUrl] = useState(siteConfig.brokerAvatarUrl || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80');
-  const [brokerBio, setBrokerBio] = useState(siteConfig.brokerBio || 'Corretor autônomo de imóveis especializado em lançamentos, alto padrão e assessoria imobiliária personalizada.');
-  const [brokerRegion, setBrokerRegion] = useState(siteConfig.brokerRegion || 'São Paulo e Região Metropolitana');
+  const [brokerAddress, setBrokerAddress] = useState(siteConfig.brokerAddress || 'São José do Rio Preto - SP');
+  const [brokerAvatarUrl, setBrokerAvatarUrl] = useState(siteConfig.brokerAvatarUrl || '/images/joel_santana_avatar.jpg');
+  const [brokerBio, setBrokerBio] = useState(siteConfig.brokerBio || 'Joel Santana - Corretor de Imóveis especialista na compra, venda e locação de imóveis residenciais, condomínios fechados, apartamentos e terrenos em São José do Rio Preto e região.');
+  const [brokerRegion, setBrokerRegion] = useState(siteConfig.brokerRegion || 'São José do Rio Preto e Região Noroeste Paulista');
 
   // Banner Presets Gallery
   const BANNER_PRESETS = [
@@ -724,7 +724,7 @@ export const ConfiguradorHtmlTema: React.FC = () => {
         brokerAddress: brokerAddress || profileAddress,
         brokerAvatarUrl: (profileAvatar && !profileAvatar.includes('1560250097-0b93528c311a'))
           ? profileAvatar
-          : ((brokerAvatarUrl && !brokerAvatarUrl.includes('1560250097-0b93528c311a')) ? brokerAvatarUrl : (currentUser?.avatar || brokerAvatarUrl)),
+          : ((brokerAvatarUrl && !brokerAvatarUrl.includes('1560250097-0b93528c311a')) ? brokerAvatarUrl : (currentUser?.avatar || '/images/joel_santana_avatar.jpg')),
         brokerBio: profileBio || brokerBio,
         brokerRegion,
         showQuemSomosPage,
@@ -1061,7 +1061,7 @@ export const ConfiguradorHtmlTema: React.FC = () => {
       phone: newMemberPhone || '(11) 90000-0000',
       secondaryPhone: newMemberSecondaryPhone,
       whatsapp: newMemberPhone ? `55${newMemberPhone.replace(/\D/g, '')}` : '5511900000000',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop&q=80',
+      avatar: '/images/joel_santana_avatar.jpg',
       commissionRate: newMemberRole === 'corretor' ? 50 : 0,
       creci: newMemberCreci,
       cnae: newMemberCnae,
@@ -2814,7 +2814,7 @@ export const ConfiguradorHtmlTema: React.FC = () => {
             <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 flex flex-col sm:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
                 <img
-                  src={profileAvatar || brokerAvatarUrl || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80'}
+                  src={profileAvatar || brokerAvatarUrl || '/images/joel_santana_avatar.jpg'}
                   alt="Minha Foto Oficial"
                   className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-indigo-500 shadow-lg shrink-0"
                 />
@@ -3629,7 +3629,7 @@ export const ConfiguradorHtmlTema: React.FC = () => {
               <div className="space-y-3 text-center md:text-left">
                 <label className="block font-bold text-slate-500 uppercase">Foto do Perfil</label>
                 <img
-                  src={profileAvatar || 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80'}
+                  src={profileAvatar || '/images/joel_santana_avatar.jpg'}
                   alt="Avatar"
                   className="w-32 h-32 rounded-2xl object-cover border-4 border-indigo-100 dark:border-indigo-900 shadow-xl mx-auto md:mx-0"
                 />

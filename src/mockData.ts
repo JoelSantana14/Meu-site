@@ -20,9 +20,9 @@ export const INITIAL_USERS: User[] = [
     role: 'admin',
     isMasterAdmin: true,
     status: 'ativo',
-    phone: '(16) 99765-4321',
-    whatsapp: '5516997654321',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop&q=80',
+    phone: '(17) 99195-1473',
+    whatsapp: '5517991951473',
+    avatar: '/images/joel_santana_avatar.jpg',
     commissionRate: 100,
     creci: 'CRECI 00001-J',
     cnai: 'CNAI 00001',
@@ -85,260 +85,62 @@ export const INITIAL_USERS: User[] = [
 
 export const INITIAL_PROPERTIES: Property[] = [
   {
-    id: 'prop_01',
-    code: 'IMP-1001',
-    title: 'Casa Residencial com 3 Quartos, Suíte e Quintal Gourmet',
-    description: 'Excelente casa de médio padrão em bairro residencial tranquilo. Sala ampla em dois ambientes, cozinha planejada, suíte espaçosa, garagem coberta para 2 carros e edícula nos fundos com churrasqueira.',
+    id: 'prop_1789786127052',
+    code: 'IMP-2637',
+    title: '🏡 Casa térrea reformada, na Vila Elmaz, São José do Rio Preto!',
+    description: '2 salas (uma com pé direito de 5m!)\n Copa + cozinha\n4 vagas (1 coberta) \nEdícula independente: cozinha, 1 dormitório e banheiro\nÁrea de serviço\n\nAceita carro de até R$ 60 mil como parte do pagamento\nPermuta por imóveis de até R$ 160 mil (Vila Toninho, apto no Palestra ou Higienópolis)\nFinanciamento disponível\n\nQuer visitar? Fale comigo agora!\n\n#VilaElmaz #casanova #SãoJoséDoRioPreto #Financiamento #casacomedícula',
     type: 'casa',
     purpose: 'venda',
-    price: 395000,
+    price: 310000,
     condoFee: 0,
-    propertyTax: 850,
-    areaSqM: 180,
+    propertyTax: 0,
+    areaSqM: 232,
     bedrooms: 3,
-    bathrooms: 2,
+    bathrooms: 1,
     suites: 1,
-    parkingSpaces: 2,
-    highlight: 'super_destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Rua das Palmeiras, 240',
-      neighborhood: 'Jardim Amália',
-      city: 'São Paulo',
-      state: 'SP',
-      zip: '04810-020'
-    },
-    features: ['Quintal Amplo', 'Edícula com Churrasqueira', 'Portão Eletrônico', 'Garagem Coberta', 'Cozinha Planejada'],
-    images: [
-      '/images/leisure_area_pool_card_1789505179384.jpg',
-      '/images/house_with_roof_card_1789502902446.jpg',
-      'https://images.unsplash.com/photo-1600573472592-401b489a3cdc?w=1200&auto=format&fit=crop&q=80'
-    ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-10'
-  },
-  {
-    id: 'prop_02',
-    code: 'IMP-1002',
-    title: 'Apartamento 2 Dormitórios com Varanda e Lazer Completo',
-    description: 'Lindo apartamento de médio padrão próximo a transporte e comércios. Ambientes bem distribuídos, armários embutidos na cozinha e dormitórios, sacada com boa ventilação e 1 vaga de garagem livre.',
-    type: 'apartamento',
-    purpose: 'aluguel',
-    price: 1850,
-    condoFee: 420,
-    propertyTax: 120,
-    areaSqM: 58,
-    bedrooms: 2,
-    bathrooms: 1,
-    suites: 0,
-    parkingSpaces: 1,
-    highlight: 'super_destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Av. Brasil, 1150',
-      neighborhood: 'Vila Nova',
-      city: 'São Paulo',
-      state: 'SP',
-      zip: '03102-000'
-    },
-    features: ['Portaria 24h', 'Piscina', 'Salão de Festas', 'Playground', 'Sacada Residencial'],
-    images: [
-      'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=1200&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&auto=format&fit=crop&q=80'
-    ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-12'
-  },
-  {
-    id: 'prop_03',
-    code: 'IMP-1003',
-    title: 'Chácara Formada com Piscina, Pomar e Área de Festas',
-    description: 'Espetacular chácara de lazer e moradia com 2.500m² de terreno totalmente plano. Casa sede aconchegante com varandão, piscina com cascata, campo de futebol society, pomar produtivo e churrasqueira coberta.',
-    type: 'chacara',
-    purpose: 'venda',
-    price: 480000,
-    condoFee: 0,
-    propertyTax: 600,
-    areaSqM: 2500,
-    bedrooms: 3,
-    bathrooms: 3,
-    suites: 1,
-    parkingSpaces: 6,
-    highlight: 'super_destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Estrada dos Ipês, Km 12',
-      neighborhood: 'Zona Rural / Chácaras',
-      city: 'São Roque',
-      state: 'SP',
-      zip: '18130-000'
-    },
-    features: ['Piscina com Cascata', 'Pomar Produtivo', 'Campo de Futebol', 'Varanda Gourmet', 'Poço Artesiano'],
-    images: [
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=80'
-    ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-15'
-  },
-  {
-    id: 'prop_04',
-    code: 'IMP-1004',
-    title: 'Studio Moderno / Kitnet Pronto para Morar ou Investir',
-    description: 'Studio conceito aberto ideal para jovens profissionais ou investimento para locação. Acabamento pronto com cooktop, iluminação LED e banheiro moderno. Baixo custo de condomínio.',
-    type: 'studio',
-    purpose: 'venda',
-    price: 215000,
-    condoFee: 250,
-    propertyTax: 80,
-    areaSqM: 32,
-    bedrooms: 1,
-    bathrooms: 1,
-    suites: 0,
-    parkingSpaces: 0,
-    highlight: 'destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Rua Vergueiro, 890',
-      neighborhood: 'Vila Mariana',
-      city: 'São Paulo',
-      state: 'SP',
-      zip: '04101-000'
-    },
-    features: ['Fechadura Eletrônica', 'Lavanderia Compartilhada', 'Próximo ao Metrô', 'Baixo Condomínio'],
-    images: [
-      'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=1200&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1554995207-c18c203602cb?w=1200&auto=format&fit=crop&q=80'
-    ],
-    agentId: 'usr_corretor1',
-    createdAt: '2026-08-18'
-  },
-  {
-    id: 'prop_05',
-    code: 'IMP-1005',
-    title: 'Sala Comercial de Centro Empresarial com Recepção',
-    description: 'Sala comercial bem localizada para consultórios, escritórios de advocacia ou contabilidade. Prédio com portaria e elevadores, sala reformada com piso frio e ar condicionado instalado.',
-    type: 'sala_comercial',
-    purpose: 'aluguel',
-    price: 1300,
-    condoFee: 380,
-    propertyTax: 110,
-    areaSqM: 42,
-    bedrooms: 0,
-    bathrooms: 1,
-    suites: 0,
-    parkingSpaces: 1,
-    highlight: 'destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Rua Barão de Itapetininga, 150',
-      neighborhood: 'Centro',
-      city: 'São Paulo',
-      state: 'SP',
-      zip: '01042-000'
-    },
-    features: ['Ar Condicionado', 'Portaria com Controle', 'Elevadores Sociais', 'Piso Frio'],
-    images: [
-      'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=1200&auto=format&fit=crop&q=80'
-    ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-20'
-  },
-  {
-    id: 'prop_06',
-    code: 'IMP-1006',
-    title: 'Salão Comercial Amplo com Pé Direito Alto e Trifásico',
-    description: 'Salão comercial espaçoso em avenida movimentada. Ideal para mercados, autopeças, depósitos, igrejas ou academias. Possui mezanino administrativo, 2 banheiros e porta de aço automatizada.',
-    type: 'salao_comercial',
-    purpose: 'venda',
-    price: 580000,
-    condoFee: 0,
-    propertyTax: 1400,
-    areaSqM: 280,
-    bedrooms: 0,
-    bathrooms: 2,
-    suites: 0,
     parkingSpaces: 4,
-    highlight: 'destaque',
+    highlight: 'super_destaque',
     status: 'disponivel',
     address: {
-      street: 'Av. Professor Luiz Ignácio Anhaia Mello, 3200',
-      neighborhood: 'Vila Prudente',
-      city: 'São Paulo',
+      street: 'Rua Ana Rita Camacho',
+      number: '427',
+      neighborhood: 'Vila Elmaz',
+      city: 'São José do Rio Preto',
       state: 'SP',
-      zip: '03154-000'
+      zip: '15051-480'
     },
-    features: ['Pé Direito Alto', 'Energia Trifásica', 'Mezanino', 'Porta Automatizada', 'Fácil Acesso de Cargas'],
-    images: [
-      'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&auto=format&fit=crop&q=80',
-      'https://images.unsplash.com/photo-1582650625119-3a31f8418b0d?w=1200&auto=format&fit=crop&q=80'
+    features: [
+      'Quintal amplo',
+      'Documentação pronta para financiamento',
+      'Edícula nos Fundos',
+      'Pé Direito 5m',
+      '4 Vagas de Garagem'
     ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-22'
-  },
-  {
-    id: 'prop_07',
-    code: 'IMP-1007',
-    title: 'Área de Lazer Completa para Eventos, Finais de Semana e Aluguel',
-    description: 'Espaço de lazer estruturado com piscina grande, quiosque coberto, churrasqueira, forno a lenha, banheiros masculino e feminino e amplo espaço gramado. Excelente renda com locação de temporada e festas.',
-    type: 'area_lazer',
-    purpose: 'aluguel',
-    price: 2200,
-    condoFee: 0,
-    propertyTax: 350,
-    areaSqM: 600,
-    bedrooms: 1,
-    bathrooms: 3,
-    suites: 0,
-    parkingSpaces: 8,
-    highlight: 'destaque',
-    status: 'disponivel',
-    address: {
-      street: 'Rua das Orquídeas, 88',
-      neighborhood: 'Bairro dos Coqueiros',
-      city: 'Cotia',
-      state: 'SP',
-      zip: '06700-000'
-    },
-    features: ['Piscina Grande', 'Churrasqueira e Forno a Lenha', 'Quiosque Coberto', 'Espaço para Festas', 'Estacionamento Próprio'],
-    images: [
-      'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=1200&auto=format&fit=crop&q=80',
-      '/images/leisure_area_pool_card_1789505179384.jpg'
+    featuresRegiao: [
+      'Próximo a Escolas e Colégios',
+      'Posto de Saúde / Hospital',
+      'Transporte Público / Ponto de Ônibus',
+      'Academias e Centros Esportivos',
+      'Padarias e Confeitarias',
+      'Fácil Acesso a Rodovias e Avenidas',
+      'Supermercados e Mercados'
     ],
-    agentId: 'usr_master_joel',
-    createdAt: '2026-08-25'
-  },
-  {
-    id: 'prop_08',
-    code: 'IMP-1008',
-    title: 'Terreno Plano Pronto para Construir em Bairro Residencial',
-    description: 'Lote residencial murado de 250m² (10x25) em rua asfaltada com água, esgoto, energia e internet de fibra. Documentação 100% em dia e aceita financiamento bancário para construção.',
-    type: 'terreno',
-    purpose: 'venda',
-    price: 135000,
-    condoFee: 0,
-    propertyTax: 400,
-    areaSqM: 250,
-    bedrooms: 0,
-    bathrooms: 0,
-    suites: 0,
-    parkingSpaces: 0,
-    highlight: 'standard',
-    status: 'disponivel',
-    address: {
-      street: 'Rua das Acácias, Lote 14',
-      neighborhood: 'Residencial Bela Vista',
-      city: 'Mogi das Cruzes',
-      state: 'SP',
-      zip: '08700-000'
-    },
-    features: ['Totalmente Murado', 'Topografia Plana', 'Rua Asfaltada', 'Documentação Ok', 'Aceita Financiamento'],
-    images: [
-      'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=80'
+    featuresEmpreendimento: [
+      'Portaria 24h',
+      'Salão de Festas',
+      'Playground'
     ],
+    images: [
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200'
+    ],
+    tarja: 'Aceita financiamento',
+    tarjaCustomColor: '#01df00',
+    topografia: 'plano',
+    ocupacaoUso: 'residencial',
     agentId: 'usr_master_joel',
-    createdAt: '2026-08-28'
+    createdAt: '2026-09-19'
   }
 ];
 
@@ -541,10 +343,10 @@ export const INITIAL_COMMISSIONS: Commission[] = [
 export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: 'msg_01',
-    senderId: 'usr_admin',
-    senderName: 'Geraldo Silva',
+    senderId: 'usr_master_joel',
+    senderName: 'Joel Santana',
     senderRole: 'admin',
-    senderAvatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&auto=format&fit=crop&q=80',
+    senderAvatar: '/images/joel_santana_avatar.jpg',
     channel: 'geral',
     text: 'Pessoal, lembrando que a reunião de alinhamento de metas da semana será hoje às 17h!',
     timestamp: '2026-09-06 09:00'
@@ -654,7 +456,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   brokerWhatsapp: '5517991951473',
   brokerEmail: 'joelsantanaimoveis@gmail.com',
   brokerAddress: 'São José do Rio Preto - SP',
-  brokerAvatarUrl: '',
+  brokerAvatarUrl: '/images/joel_santana_avatar.jpg',
   brokerBio: 'Joel Santana - Corretor de Imóveis especialista na compra, venda e locação de imóveis residenciais, condomínios fechados, apartamentos e terrenos em São José do Rio Preto e região.',
   brokerRegion: 'São José do Rio Preto, Mirassol, Bady Bassitt, Cedral e Noroeste Paulista',
   showQuemSomosPage: true,
