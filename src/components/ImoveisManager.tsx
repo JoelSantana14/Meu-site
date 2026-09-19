@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { uploadPropertyImage, deletePropertyImageFromStorage } from '../services/imageUploadService';
 import {
   Property,
   HighlightLevel,
@@ -500,55 +501,6 @@ export const ImoveisManager: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  // Process and compress image file via Canvas (optimized for web, mobile & Firestore size limits)
-  const processImageFile = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let { width, height } = img;
-          const maxDim = 960;
-
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            let result = canvas.toDataURL('image/jpeg', 0.68);
-            
-            // If still larger than ~70KB base64, scale down to 780px and 0.55 quality
-            if (result.length > 95000) {
-              const scaleDown = 780 / Math.max(width, height);
-              const w2 = Math.round(width * scaleDown);
-              const h2 = Math.round(height * scaleDown);
-              canvas.width = w2;
-              canvas.height = h2;
-              ctx.drawImage(img, 0, 0, w2, h2);
-              result = canvas.toDataURL('image/jpeg', 0.55);
-            }
-            resolve(result);
-          } else {
-            resolve(event.target?.result as string);
-          }
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const files: File[] = Array.from(e.target.files);
@@ -559,14 +511,22 @@ export const ImoveisManager: React.FC = () => {
       return;
     }
 
-    const filesToProcess = files.slice(0, availableSlots);
+    const filesToUpload = files.slice(0, availableSlots);
+    const currentPropId = editingPropId || `prop_${Date.now()}`;
+    
     setIsProcessingFiles(true);
 
     try {
-      const processed = await Promise.all(filesToProcess.map(f => processImageFile(f)));
-      setImages(prev => [...prev, ...processed]);
-    } catch (err) {
-      console.error('Erro ao processar imagens:', err);
+      const uploadedUrls: string[] = [];
+      for (const file of filesToUpload) {
+        const url = await uploadPropertyImage(currentPropId, file);
+        uploadedUrls.push(url);
+      }
+      setImages(prev => [...prev, ...uploadedUrls]);
+      showToast('success', `${uploadedUrls.length} foto(s) enviada(s) com sucesso para o Firebase Storage!`);
+    } catch (err: any) {
+      console.error('Erro ao enviar imagens para o Storage:', err);
+      showToast('error', `Não foi possível enviar algumas fotos: ${err.message || 'Erro de conexão'}`);
     } finally {
       setIsProcessingFiles(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -592,6 +552,11 @@ export const ImoveisManager: React.FC = () => {
   const confirmDeletePhoto = () => {
     if (!photoToDelete) return;
     const { index, url } = photoToDelete;
+
+    if (url && (url.includes('firebasestorage.googleapis.com') || url.includes('properties/'))) {
+      deletePropertyImageFromStorage(url).catch(err => console.warn('Erro ao remover do Storage:', err));
+    }
+
     setImages(prev => prev.filter((_, i) => i !== index));
     setImageDescriptions(prev => {
       const next = { ...prev };

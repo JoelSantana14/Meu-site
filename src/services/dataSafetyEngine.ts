@@ -427,25 +427,8 @@ export function ensureSafeFirestoreDocumentSize<T extends Record<string, any>>(o
     if (size <= maxBytes) {
       return obj;
     }
-
-    console.warn(`[DataSafetyEngine] Document exceeds safe threshold (${size} bytes > ${maxBytes} bytes). Adapting payload for Firestore safety.`);
-    const copy: any = { ...obj };
-
-    // If it has an images array with large base64 strings
-    if (Array.isArray(copy.images) && copy.images.length > 0) {
-      let currentImages = [...copy.images];
-      while (currentImages.length > 1) {
-        currentImages.pop();
-        copy.images = currentImages;
-        const newSize = new TextEncoder().encode(JSON.stringify(copy)).length;
-        if (newSize <= maxBytes) {
-          console.warn(`[DataSafetyEngine] Adjusted images count to ${currentImages.length} to fit Firestore limit.`);
-          return copy as T;
-        }
-      }
-    }
-
-    return copy as T;
+    console.warn(`[DataSafetyEngine] Document exceeds safe threshold (${size} bytes > ${maxBytes} bytes).`);
+    return obj;
   } catch {
     return obj;
   }
