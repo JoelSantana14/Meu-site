@@ -5,6 +5,8 @@ import { SuperDestaquesCarousel } from './SuperDestaquesCarousel';
 import { WatermarkOverlay } from './WatermarkOverlay';
 import { LgpdConsentModal } from './LgpdConsentModal';
 import { ExclusiveLaunchModal } from './ExclusiveLaunchModal';
+import { PropertyGallery } from './PropertyGallery';
+import { FooterLeadCapture } from './FooterLeadCapture';
 import { getPropertyTypeLabel } from '../utils/propertyHelpers';
 import { AnimatedBlobs } from './AnimatedBlobs';
 import { AnimatedCounter } from './AnimatedCounter';
@@ -151,7 +153,6 @@ export const VitrinePortal: React.FC = () => {
     }
   });
   const [onlyFavoritesFilter, setOnlyFavoritesFilter] = useState(false);
-  const [modalActiveImageIndex, setModalActiveImageIndex] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -180,7 +181,6 @@ export const VitrinePortal: React.FC = () => {
   };
 
   const openPropertyDetail = (prop: Property) => {
-    setModalActiveImageIndex(0);
     setSelectedPropertyDetail(prop);
   };
 
@@ -2067,6 +2067,15 @@ export const VitrinePortal: React.FC = () => {
         );
       })()}
 
+      {/* ==================== FOOTER LEAD CAPTURE SECTION ==================== */}
+      <FooterLeadCapture
+        siteConfig={siteConfig}
+        users={users}
+        onAddLead={addLead}
+        onSimulateLeadWeb={simulateNewLeadWeb}
+        onShowToast={showToast}
+      />
+
       {/* ==================== PROPERTY DETAIL MODAL ==================== */}
       {selectedPropertyDetail && (
         <div className="fixed inset-0 z-50 bg-white dark:bg-slate-900 w-full h-full overflow-y-auto p-4 sm:p-8 lg:p-12 space-y-6">
@@ -2087,93 +2096,10 @@ export const VitrinePortal: React.FC = () => {
             <div className="space-y-6 -mt-12 max-w-7xl mx-auto px-2 sm:px-6">
               
               {/* Main Photo & Interactive Gallery */}
-              <div className="space-y-3">
-                <div className="relative aspect-[16/9] rounded-2xl overflow-hidden bg-slate-950 group/img">
-                  <img
-                    src={selectedPropertyDetail.images[modalActiveImageIndex] || selectedPropertyDetail.images[0]}
-                    alt={selectedPropertyDetail.title}
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      if (!target.src.includes('unsplash.com')) {
-                        target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80';
-                      }
-                    }}
-                    className="w-full h-full object-cover transition-all duration-300"
-                  />
-                  <WatermarkOverlay siteConfig={siteConfig} />
-
-                  {/* Previous / Next Image Navigation Controls */}
-                  {selectedPropertyDetail.images.length > 1 && (
-                    <>
-                      <button
-                        onClick={() => setModalActiveImageIndex(prev => (prev > 0 ? prev - 1 : selectedPropertyDetail.images.length - 1))}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-black text-white p-2 rounded-full transition-all shadow-lg border border-white/20"
-                        title="Foto Anterior"
-                      >
-                        <ChevronLeft className="w-5 h-5" />
-                      </button>
-
-                      <button
-                        onClick={() => setModalActiveImageIndex(prev => (prev < selectedPropertyDetail.images.length - 1 ? prev + 1 : 0))}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 bg-slate-900/80 hover:bg-black text-white p-2 rounded-full transition-all shadow-lg border border-white/20"
-                        title="Próxima Foto"
-                      >
-                        <ChevronRight className="w-5 h-5" />
-                      </button>
-
-                      <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-mono font-bold shadow-md">
-                        Foto {modalActiveImageIndex + 1} de {selectedPropertyDetail.images.length}
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Photo Description / Legenda Displayed Under the Photo */}
-                {(() => {
-                  const currentImgUrl = selectedPropertyDetail.images[modalActiveImageIndex] || selectedPropertyDetail.images[0];
-                  const caption = selectedPropertyDetail.imageDescriptions?.[currentImgUrl] || selectedPropertyDetail.imageDescriptions?.[String(modalActiveImageIndex)];
-                  if (!caption) return null;
-                  return (
-                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700/80 rounded-xl text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium shadow-xs">
-                      <div className="p-1 rounded-md bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 shrink-0">
-                        <ImageIcon className="w-4 h-4" />
-                      </div>
-                      <span className="leading-snug">{caption}</span>
-                    </div>
-                  );
-                })()}
-
-                {/* Clickable Thumbnails Grid */}
-                {selectedPropertyDetail.images.length > 1 && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    {selectedPropertyDetail.images.map((img, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setModalActiveImageIndex(i)}
-                        className={`aspect-[16/10] rounded-xl overflow-hidden bg-slate-950 border-2 transition-all cursor-pointer ${
-                          i === modalActiveImageIndex
-                            ? 'border-indigo-600 ring-2 ring-indigo-500/50 scale-105 shadow-md'
-                            : 'border-transparent opacity-70 hover:opacity-100 hover:scale-102'
-                        }`}
-                        title={`Clique para abrir foto ${i + 1}`}
-                      >
-                        <img
-                          src={img}
-                          alt={`Foto ${i + 1}`}
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            if (!target.src.includes('unsplash.com')) {
-                              target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&auto=format&fit=crop&q=80';
-                            }
-                          }}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <PropertyGallery
+                property={selectedPropertyDetail}
+                siteConfig={siteConfig}
+              />
 
               {/* Title, Actions & Price Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">

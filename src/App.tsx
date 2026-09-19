@@ -122,13 +122,18 @@ const MainContent: React.FC = () => {
     };
   }, []);
 
-  // Triple-click on footer copyright to open system login
+  // Triple-click / 3 toques on footer copyright to open system login
   const [rightsClickCount, setRightsClickCount] = useState(0);
   const [lastRightsClickTime, setLastRightsClickTime] = useState(0);
 
-  const handleRightsClick = () => {
+  const handleRightsClick = (e?: React.MouseEvent | React.TouchEvent) => {
+    if (e && 'detail' in e && (e as React.MouseEvent).detail === 3) {
+      setIsLoginModalOpen(true);
+      setRightsClickCount(0);
+      return;
+    }
     const now = Date.now();
-    if (now - lastRightsClickTime < 1800) {
+    if (now - lastRightsClickTime < 2200) {
       const nextCount = rightsClickCount + 1;
       if (nextCount >= 3) {
         setIsLoginModalOpen(true);
@@ -307,7 +312,9 @@ const MainContent: React.FC = () => {
             </span>
             <span
               onClick={handleRightsClick}
-              className="cursor-default select-none"
+              onTouchEnd={handleRightsClick}
+              className="cursor-default select-none text-inherit hover:text-inherit hover:bg-transparent no-underline transition-none"
+              style={{ cursor: 'default', userSelect: 'none' }}
               title=""
             >
               © {new Date().getFullYear()} {siteConfig?.companyName || 'Joel Santana'}. Todos os direitos reservados.

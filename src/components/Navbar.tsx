@@ -318,22 +318,6 @@ export const Navbar: React.FC<{ onOpenLoginModal: () => void }> = ({ onOpenLogin
           {/* Right Controls: Online status, Language, Dark Mode, Notifications, User Profile */}
           <div className="flex items-center space-x-2">
             
-            {/* Admin Live Visitor Counter Pill (Visible only to Admin) */}
-            {isAdmin && (
-              <button
-                onClick={() => setActiveTab('estatisticas')}
-                title={`Contador de Visitas do Site (Apenas Administrador)\nTotal: ${siteStats?.totalVisits || 0}\nHoje: ${siteStats?.todayVisits || 0}\nÚnicos: ${siteStats?.uniqueVisitors || 0}`}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 transition-all cursor-pointer shadow-xs"
-              >
-                <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[11px] font-black">{siteStats?.totalVisits?.toLocaleString('pt-BR') || 0}</span>
-                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">+{siteStats?.todayVisits || 0}</span>
-              </button>
-            )}
-
             {/* Connection Badge */}
             <div
               title={isOnline ? 'Conectado à internet' : 'Modo Offline - Dados salvos localmente'}
@@ -481,21 +465,28 @@ export const Navbar: React.FC<{ onOpenLoginModal: () => void }> = ({ onOpenLogin
               </div>
             )}
 
-            {/* Restricted Area Access / Active Session Menu removed per user request */}
-            <div className="relative">
-              {!currentUser && (
+            {/* User Session Menu (Visible ONLY when a user is actively authenticated/logged in) */}
+            {currentUser && (
+              <div className="relative">
                 <button
-                  onClick={onOpenLoginModal}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all text-xs font-bold shadow-md"
-                  title="Fazer Login no Sistema"
+                  onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 pl-2.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                  title="Menu do Usuário"
                 >
-                  <Lock className="w-3.5 h-3.5" />
-                  <span>Entrar</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200 hidden sm:inline">
+                    {currentUser.name.split(' ')[0]}
+                  </span>
+                  <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">
+                    {currentUser.avatar ? (
+                      <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      currentUser.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
                 </button>
-              )}
 
-              {/* User Selector Dropdown */}
-              {isUserDropdownOpen && currentUser && (
+                {/* User Selector Dropdown */}
+                {isUserDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2.5 z-50">
                   <div className="p-3 bg-indigo-50/70 dark:bg-slate-900 rounded-xl mb-2 border border-indigo-100 dark:border-slate-700">
                     <p className="text-xs font-bold text-slate-900 dark:text-white">{currentUser.name}</p>
@@ -582,6 +573,7 @@ export const Navbar: React.FC<{ onOpenLoginModal: () => void }> = ({ onOpenLogin
                 </div>
               )}
             </div>
+          )}
 
             {/* Mobile Menu Toggle Button */}
             <button
