@@ -25,6 +25,143 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
+  // REST API: Properties
+  app.get('/api/properties', async (_req, res) => {
+    try {
+      const { collection, getDocs, getFirestore } = await import('firebase/firestore');
+      const { initializeApp, getApps } = await import('firebase/app');
+      let cfg: any = {};
+      try {
+        cfg = (await import('./firebase-applet-config.json')).default;
+      } catch {
+        cfg = {
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          apiKey: process.env.VITE_FIREBASE_API_KEY,
+          firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+        };
+      }
+      const fbApp = !getApps().length ? initializeApp(cfg) : getApps()[0];
+      const firestore = getFirestore(fbApp, cfg.firestoreDatabaseId || '(default)');
+      const snap = await getDocs(collection(firestore, 'properties'));
+      const properties = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      res.json({ success: true, count: properties.length, data: properties });
+    } catch (err: any) {
+      console.error('[API /api/properties GET error]:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/properties', async (req, res) => {
+    try {
+      const { doc, setDoc, getFirestore } = await import('firebase/firestore');
+      const { initializeApp, getApps } = await import('firebase/app');
+      let cfg: any = {};
+      try {
+        cfg = (await import('./firebase-applet-config.json')).default;
+      } catch {
+        cfg = {
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          apiKey: process.env.VITE_FIREBASE_API_KEY,
+          firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+        };
+      }
+      const fbApp = !getApps().length ? initializeApp(cfg) : getApps()[0];
+      const firestore = getFirestore(fbApp, cfg.firestoreDatabaseId || '(default)');
+      
+      const propertyData = req.body;
+      const id = propertyData.id || `prop_${Date.now()}`;
+      const toSave = {
+        ...propertyData,
+        id,
+        updatedAt: new Date().toISOString()
+      };
+
+      await setDoc(doc(firestore, 'properties', id), toSave, { merge: true });
+      res.json({ success: true, id, message: 'Imóvel gravado com sucesso no banco de dados', data: toSave });
+    } catch (err: any) {
+      console.error('[API /api/properties POST error]:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.delete('/api/properties/:id', async (req, res) => {
+    try {
+      const { doc, deleteDoc, getFirestore } = await import('firebase/firestore');
+      const { initializeApp, getApps } = await import('firebase/app');
+      let cfg: any = {};
+      try {
+        cfg = (await import('./firebase-applet-config.json')).default;
+      } catch {
+        cfg = {
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          apiKey: process.env.VITE_FIREBASE_API_KEY,
+          firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+        };
+      }
+      const fbApp = !getApps().length ? initializeApp(cfg) : getApps()[0];
+      const firestore = getFirestore(fbApp, cfg.firestoreDatabaseId || '(default)');
+      const { id } = req.params;
+      await deleteDoc(doc(firestore, 'properties', id));
+      res.json({ success: true, message: `Imóvel ${id} excluído com sucesso do banco de dados.` });
+    } catch (err: any) {
+      console.error('[API /api/properties DELETE error]:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // REST API: Leads
+  app.get('/api/leads', async (_req, res) => {
+    try {
+      const { collection, getDocs, getFirestore } = await import('firebase/firestore');
+      const { initializeApp, getApps } = await import('firebase/app');
+      let cfg: any = {};
+      try {
+        cfg = (await import('./firebase-applet-config.json')).default;
+      } catch {
+        cfg = {
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          apiKey: process.env.VITE_FIREBASE_API_KEY,
+          firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+        };
+      }
+      const fbApp = !getApps().length ? initializeApp(cfg) : getApps()[0];
+      const firestore = getFirestore(fbApp, cfg.firestoreDatabaseId || '(default)');
+      const snap = await getDocs(collection(firestore, 'leads'));
+      const leads = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+      res.json({ success: true, count: leads.length, data: leads });
+    } catch (err: any) {
+      console.error('[API /api/leads GET error]:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post('/api/leads', async (req, res) => {
+    try {
+      const { doc, setDoc, getFirestore } = await import('firebase/firestore');
+      const { initializeApp, getApps } = await import('firebase/app');
+      let cfg: any = {};
+      try {
+        cfg = (await import('./firebase-applet-config.json')).default;
+      } catch {
+        cfg = {
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+          apiKey: process.env.VITE_FIREBASE_API_KEY,
+          firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)'
+        };
+      }
+      const fbApp = !getApps().length ? initializeApp(cfg) : getApps()[0];
+      const firestore = getFirestore(fbApp, cfg.firestoreDatabaseId || '(default)');
+      const leadData = req.body;
+      const id = leadData.id || `lead_${Date.now()}`;
+      const toSave = { ...leadData, id, updatedAt: new Date().toISOString() };
+      await setDoc(doc(firestore, 'leads', id), toSave, { merge: true });
+      res.json({ success: true, id, message: 'Lead gravado com sucesso no banco', data: toSave });
+    } catch (err: any) {
+      console.error('[API /api/leads POST error]:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // Manual Backup Trigger
   app.post('/api/trigger-backup', async (_req, res) => {
     try {

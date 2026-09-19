@@ -31,8 +31,16 @@ import {
   AuditLogEntry,
   CrmTask,
   SystemBackupSnapshot,
-  DataVersionRecord
+  DataVersionRecord,
+  ConfigurableFieldCategory,
+  ConfigurableOption
 } from '../types';
+
+import {
+  INITIAL_CONFIGURABLE_OPTIONS,
+  CONFIGURABLE_CATEGORIES,
+  slugifyOption
+} from '../utils/defaultConfigurableOptions';
 
 import {
   idbPut,
@@ -89,6 +97,7 @@ interface AppContextType {
   crmTasks: CrmTask[];
   auditLogs: AuditLogEntry[];
   siteConfig: SiteConfig;
+  configurableOptions: ConfigurableOption[];
   isOnline: boolean;
   selectedPropertyDetail: Property | null;
   setSelectedPropertyDetail: (prop: Property | null) => void;
@@ -111,8 +120,8 @@ interface AppContextType {
   acceptInvitation: (inviteToken: string, newPassword: string) => { success: boolean; message: string };
   
   // Property Actions
-  addProperty: (prop: Omit<Property, 'id' | 'createdAt'>) => void;
-  updateProperty: (prop: Property) => void;
+  addProperty: (prop: Omit<Property, 'id' | 'createdAt'>) => Promise<{ success: boolean; id?: string; error?: string }>;
+  updateProperty: (prop: Property) => Promise<{ success: boolean; error?: string }>;
   deleteProperty: (id: string) => Promise<{ success: boolean; message?: string }>;
   archiveProperty: (id: string, reason: string) => Promise<{ success: boolean; message?: string }>;
   unarchiveProperty: (id: string) => Promise<{ success: boolean; message?: string }>;
@@ -163,6 +172,14 @@ interface AppContextType {
   updateSiteConfig: (newConfig: Partial<SiteConfig>) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: Language) => void;
+
+  // Configurable Dynamic Fields & Options
+  addConfigurableOption: (category: ConfigurableFieldCategory, label: string) => Promise<{ success: boolean; option?: ConfigurableOption; error?: string }>;
+  updateConfigurableOption: (id: string, updates: Partial<ConfigurableOption>) => Promise<{ success: boolean; error?: string }>;
+  deleteConfigurableOption: (id: string, cleanupFromExistingRecords?: boolean) => Promise<{ success: boolean; error?: string; affectedCount?: number }>;
+  toggleConfigurableOptionStatus: (id: string) => Promise<{ success: boolean; error?: string }>;
+  reorderConfigurableOptions: (category: ConfigurableFieldCategory, orderedIds: string[]) => Promise<{ success: boolean; error?: string }>;
+  renameConfigurableOption: (id: string, newLabel: string, updateExistingProperties?: boolean) => Promise<{ success: boolean; error?: string }>;
   
   // Notifications
   markNotificationRead: (id: string) => void;
@@ -247,6 +264,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     idbGetAll<CrmTask>('crmTasks').then(cached => {
       if (cached && cached.length > 0) {
         setCrmTasks(cached);
+      }
+    });
+
+    idbGetAll<ConfigurableOption>('configurableOptions').then(cached => {
+      if (cached && cached.length > 0) {
+        setConfigurableOptions(cached);
       }
     });
 
@@ -356,6 +379,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error(e);
     }
     return INITIAL_SITE_CONFIG;
+  });
+
+  const [configurableOptions, setConfigurableOptions] = useState<ConfigurableOption[]>(() => {
+    try {
+      const saved = localStorage.getItem('imobipro_configurable_options');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return INITIAL_CONFIGURABLE_OPTIONS;
   });
 
   // FCM Push Notifications State
@@ -824,6 +860,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }, (err) => console.error('Firestore audit err:', err));
 
+    // 13. Configurable Options (Realtime Firestore + Offline Store)
+    const unsubOptions = onSnapshot(collection(db, 'configurable_options'), (snapshot) => {
+      if (snapshot.empty) {
+        const isInit = localStorage.getItem('imobipro_options_initialized') === 'true';
+        if (!isInit) {
+          // Seed defaults to Firestore and IndexedDB
+          INITIAL_CONFIGURABLE_OPTIONS.forEach(opt => {
+            setDoc(doc(db, 'configurable_options', opt.id), opt).catch(() => {});
+          });
+          setConfigurableOptions(INITIAL_CONFIGURABLE_OPTIONS);
+          idbBulkPut('configurableOptions', INITIAL_CONFIGURABLE_OPTIONS);
+          localStorage.setItem('imobipro_options_initialized', 'true');
+        } else {
+          idbGetAll<ConfigurableOption>('configurableOptions').then(local => {
+            const list = local && local.length > 0 ? local : INITIAL_CONFIGURABLE_OPTIONS;
+            setConfigurableOptions(list);
+            list.forEach(opt => {
+              setDoc(doc(db, 'configurable_options', opt.id), opt).catch(() => {});
+            });
+          });
+        }
+      } else {
+        localStorage.setItem('imobipro_options_initialized', 'true');
+        const list = snapshot.docs.map(d => d.data() as ConfigurableOption).filter((d: any) => d && !d._deleted);
+        list.sort((a, b) => (a.order || 0) - (b.order || 0));
+        setConfigurableOptions(list);
+        idbBulkPut('configurableOptions', list);
+        try {
+          localStorage.setItem('imobipro_configurable_options', JSON.stringify(list));
+        } catch {}
+      }
+    }, (err) => {
+      console.error('Firestore configurable options err:', err);
+      idbGetAll<ConfigurableOption>('configurableOptions').then(local => {
+        if (local && local.length > 0) setConfigurableOptions(local);
+      });
+    });
+
     return () => {
       unsubUsers();
       unsubProps();
@@ -837,6 +911,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubTasks();
       unsubDocs();
       unsubAudit();
+      unsubOptions();
     };
   }, []);
 
@@ -1139,7 +1214,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Property CRUD with Robust Durability & Versioning
-  const addProperty = async (propData: Omit<Property, 'id' | 'createdAt'>) => {
+  const addProperty = async (propData: Omit<Property, 'id' | 'createdAt'>): Promise<{ success: boolean; id?: string; error?: string }> => {
     const id = `prop_${Date.now()}`;
     const newProp: Property = {
       ...propData,
@@ -1150,7 +1225,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const val = validateRecordIntegrity('properties', newProp);
     if (!val.valid) {
       setLastSaveStatus({ status: 'error', message: `Erro ao salvar imóvel: ${val.error}`, timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-      return;
+      return { success: false, error: val.error };
     }
 
     setLastSaveStatus({ status: 'saving', message: 'Salvando imóvel com persistência...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
@@ -1171,24 +1246,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await setDoc(doc(db, 'properties', id), cleanProp, { merge: true });
       setLastSaveStatus({ status: 'saved', message: 'Imóvel salvo com sucesso na nuvem e redundância local', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-    } catch (err) {
+      return { success: true, id };
+    } catch (err: any) {
       console.warn('[DataSafety] Firestore offline ou erro de rede, salvo localmente com segurança:', err);
       await queueOfflineSync('set', 'properties', id, cleanProp);
       setLastSaveStatus({ status: 'saved', message: 'Salvo com segurança localmente (sincronização automática na fila)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+      return { success: true, id };
     }
   };
 
-  const updateProperty = async (updated: Property) => {
+  const updateProperty = async (updated: Property): Promise<{ success: boolean; error?: string }> => {
     if (!acquireLock(updated.id)) {
       console.warn('[DataSafety] Bloqueado clique duplo ou gravação concorrente em andamento para:', updated.id);
-      return;
+      return { success: false, error: 'Gravação em andamento. Aguarde...' };
     }
 
     const val = validateRecordIntegrity('properties', updated);
     if (!val.valid) {
       releaseLock(updated.id);
       setLastSaveStatus({ status: 'error', message: `Erro ao atualizar: ${val.error}`, timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-      return;
+      return { success: false, error: val.error };
     }
 
     setLastSaveStatus({ status: 'saving', message: 'Atualizando imóvel...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
@@ -1208,10 +1285,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       await setDoc(doc(db, 'properties', updated.id), cleanProp, { merge: true });
       setLastSaveStatus({ status: 'saved', message: 'Imóvel atualizado com sucesso!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-    } catch (err) {
+      return { success: true };
+    } catch (err: any) {
       console.warn('[DataSafety] Firestore offline, atualizado localmente:', err);
       await queueOfflineSync('set', 'properties', updated.id, cleanProp);
       setLastSaveStatus({ status: 'saved', message: 'Atualizado com segurança local (fila de sincronização ativa)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+      return { success: true };
     } finally {
       releaseLock(updated.id);
     }
@@ -2188,6 +2267,256 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSiteConfig({ language: lang });
   };
 
+  // Configurable Dynamic Fields & Options System
+  const addConfigurableOption = async (category: ConfigurableFieldCategory, label: string): Promise<{ success: boolean; option?: ConfigurableOption; error?: string }> => {
+    const cleanLabel = (label || '').trim();
+    if (!cleanLabel) {
+      return { success: false, error: 'O nome da opção não pode estar em branco.' };
+    }
+
+    // Check if duplicate option already exists in this category
+    const existing = configurableOptions.find(o => 
+      o.category === category && 
+      o.label.toLowerCase() === cleanLabel.toLowerCase()
+    );
+
+    if (existing) {
+      // If was previously deactivated, reactivate it seamlessly
+      if (!existing.active) {
+        await updateConfigurableOption(existing.id, { active: true });
+        return { success: true, option: { ...existing, active: true } };
+      }
+      return { success: true, option: existing };
+    }
+
+    const categoryOptions = configurableOptions.filter(o => o.category === category);
+    const maxOrder = categoryOptions.reduce((max, o) => Math.max(max, o.order || 0), 0);
+
+    const newOption: ConfigurableOption = {
+      id: `opt_${category}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      category,
+      label: cleanLabel,
+      value: slugifyOption(cleanLabel),
+      order: maxOrder + 1,
+      active: true,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    const nextList = [...configurableOptions, newOption];
+    setConfigurableOptions(nextList);
+    try {
+      localStorage.setItem('imobipro_configurable_options', JSON.stringify(nextList));
+    } catch {}
+    await idbPut('configurableOptions', newOption);
+
+    // Persist to Cloud Firestore
+    try {
+      await setDoc(doc(db, 'configurable_options', newOption.id), newOption);
+      setLastSaveStatus({
+        status: 'saved',
+        message: `Opção "${cleanLabel}" salva com sucesso`,
+        timestamp: new Date().toLocaleTimeString().slice(0, 5)
+      });
+    } catch (err: any) {
+      console.warn('[ConfigurableOptions] Fallback offline sync for new option:', err);
+      await queueOfflineSync('set', 'configurableOptions', newOption.id, newOption);
+    }
+
+    addAuditLog({
+      action: 'Criação de Opção de Campo',
+      category: 'sistema',
+      details: `Nova opção "${cleanLabel}" cadastrada na categoria "${category}".`,
+      entityId: newOption.id
+    });
+
+    return { success: true, option: newOption };
+  };
+
+  const updateConfigurableOption = async (id: string, updates: Partial<ConfigurableOption>): Promise<{ success: boolean; error?: string }> => {
+    const target = configurableOptions.find(o => o.id === id);
+    if (!target) return { success: false, error: 'Opção não encontrada' };
+
+    const updated: ConfigurableOption = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+
+    const nextList = configurableOptions.map(o => o.id === id ? updated : o);
+    setConfigurableOptions(nextList);
+    try {
+      localStorage.setItem('imobipro_configurable_options', JSON.stringify(nextList));
+    } catch {}
+    await idbPut('configurableOptions', updated);
+
+    try {
+      await setDoc(doc(db, 'configurable_options', id), updated, { merge: true });
+    } catch (err: any) {
+      await queueOfflineSync('set', 'configurableOptions', id, updated);
+    }
+
+    return { success: true };
+  };
+
+  const deleteConfigurableOption = async (id: string, cleanupFromExistingRecords: boolean = false): Promise<{ success: boolean; error?: string; affectedCount?: number }> => {
+    const target = configurableOptions.find(o => o.id === id);
+    if (!target) return { success: false, error: 'Opção não encontrada' };
+
+    // Calculate usage count in properties
+    let affectedCount = 0;
+    properties.forEach(p => {
+      let isUsed = false;
+      if (target.category === 'tipo_imovel' && (p.type === target.value || p.type === target.label)) isUsed = true;
+      else if (target.category === 'caracteristica_imovel' && p.features && (p.features.includes(target.label) || p.features.includes(target.value))) isUsed = true;
+      else if (target.category === 'caracteristica_regiao' && p.featuresRegiao && (p.featuresRegiao.includes(target.label) || p.featuresRegiao.includes(target.value))) isUsed = true;
+      else if (target.category === 'caracteristica_empreendimento' && p.featuresEmpreendimento && (p.featuresEmpreendimento.includes(target.label) || p.featuresEmpreendimento.includes(target.value))) isUsed = true;
+      else if (target.category === 'topografia' && (p.topografia === target.value || p.topografia === target.label)) isUsed = true;
+      else if (target.category === 'ocupacao_uso' && (p.ocupacaoUso === target.value || p.ocupacaoUso === target.label)) isUsed = true;
+      else if (target.category === 'tarja_foto' && (p.tarja === target.label || p.tarja === target.value)) isUsed = true;
+      if (isUsed) affectedCount++;
+    });
+
+    // If cleanup was requested, strip it from existing properties
+    if (cleanupFromExistingRecords && affectedCount > 0) {
+      properties.forEach(prop => {
+        let changed = false;
+        const updated = { ...prop };
+        if (target.category === 'caracteristica_imovel' && updated.features) {
+          if (updated.features.includes(target.label) || updated.features.includes(target.value)) {
+            updated.features = updated.features.filter(f => f !== target.label && f !== target.value);
+            changed = true;
+          }
+        } else if (target.category === 'caracteristica_regiao' && updated.featuresRegiao) {
+          if (updated.featuresRegiao.includes(target.label) || updated.featuresRegiao.includes(target.value)) {
+            updated.featuresRegiao = updated.featuresRegiao.filter(f => f !== target.label && f !== target.value);
+            changed = true;
+          }
+        } else if (target.category === 'caracteristica_empreendimento' && updated.featuresEmpreendimento) {
+          if (updated.featuresEmpreendimento.includes(target.label) || updated.featuresEmpreendimento.includes(target.value)) {
+            updated.featuresEmpreendimento = updated.featuresEmpreendimento.filter(f => f !== target.label && f !== target.value);
+            changed = true;
+          }
+        } else if (target.category === 'tarja_foto' && (updated.tarja === target.label || updated.tarja === target.value)) {
+          updated.tarja = undefined;
+          changed = true;
+        }
+
+        if (changed) {
+          updateProperty(updated).catch(() => {});
+        }
+      });
+    }
+
+    const nextList = configurableOptions.filter(o => o.id !== id);
+    setConfigurableOptions(nextList);
+    try {
+      localStorage.setItem('imobipro_configurable_options', JSON.stringify(nextList));
+    } catch {}
+    await idbDelete('configurableOptions', id);
+
+    try {
+      await deleteDoc(doc(db, 'configurable_options', id));
+      setLastSaveStatus({
+        status: 'saved',
+        message: `Opção "${target.label}" excluída com sucesso`,
+        timestamp: new Date().toLocaleTimeString().slice(0, 5)
+      });
+    } catch (err: any) {
+      await queueOfflineSync('delete', 'configurableOptions', id);
+    }
+
+    const catName = CONFIGURABLE_CATEGORIES.find(c => c.id === target.category)?.name || target.category;
+
+    addAuditLog({
+      action: 'Exclusão de Opção de Campo',
+      category: 'sistema',
+      details: `Opção "${target.label}" da categoria "${catName}" excluída por ${currentUser?.name || 'Administrador'}. Vínculos existentes: ${affectedCount} registro(s).`,
+      entityId: id
+    });
+
+    return { success: true, affectedCount };
+  };
+
+  const toggleConfigurableOptionStatus = async (id: string): Promise<{ success: boolean; error?: string }> => {
+    const target = configurableOptions.find(o => o.id === id);
+    if (!target) return { success: false, error: 'Opção não encontrada' };
+    return updateConfigurableOption(id, { active: !target.active });
+  };
+
+  const reorderConfigurableOptions = async (category: ConfigurableFieldCategory, orderedIds: string[]): Promise<{ success: boolean; error?: string }> => {
+    const updatedList = configurableOptions.map(opt => {
+      if (opt.category !== category) return opt;
+      const newIndex = orderedIds.indexOf(opt.id);
+      if (newIndex !== -1) {
+        return { ...opt, order: newIndex + 1 };
+      }
+      return opt;
+    });
+
+    setConfigurableOptions(updatedList);
+    try {
+      localStorage.setItem('imobipro_configurable_options', JSON.stringify(updatedList));
+    } catch {}
+    await idbBulkPut('configurableOptions', updatedList);
+
+    // Sync order updates in Firestore
+    for (let i = 0; i < orderedIds.length; i++) {
+      const optId = orderedIds[i];
+      setDoc(doc(db, 'configurable_options', optId), { order: i + 1 }, { merge: true }).catch(() => {});
+    }
+
+    return { success: true };
+  };
+
+  const renameConfigurableOption = async (id: string, newLabel: string, updateExistingProperties: boolean = true): Promise<{ success: boolean; error?: string }> => {
+    const cleanLabel = (newLabel || '').trim();
+    if (!cleanLabel) return { success: false, error: 'O nome não pode estar em branco' };
+
+    const target = configurableOptions.find(o => o.id === id);
+    if (!target) return { success: false, error: 'Opção não encontrada' };
+
+    const oldLabel = target.label;
+    const oldValue = target.value;
+    const newValue = slugifyOption(cleanLabel);
+
+    await updateConfigurableOption(id, { label: cleanLabel, value: newValue });
+
+    // Sync existing properties if requested
+    if (updateExistingProperties) {
+      properties.forEach(prop => {
+        let changed = false;
+        const updatedProp = { ...prop };
+
+        if (target.category === 'tipo_imovel' && (prop.type === oldValue || prop.type === oldLabel)) {
+          updatedProp.type = newValue;
+          changed = true;
+        } else if (target.category === 'caracteristica_imovel' && prop.features) {
+          if (prop.features.includes(oldLabel) || prop.features.includes(oldValue)) {
+            updatedProp.features = prop.features.map(f => (f === oldLabel || f === oldValue) ? cleanLabel : f);
+            changed = true;
+          }
+        } else if (target.category === 'caracteristica_regiao' && prop.featuresRegiao) {
+          if (prop.featuresRegiao.includes(oldLabel) || prop.featuresRegiao.includes(oldValue)) {
+            updatedProp.featuresRegiao = prop.featuresRegiao.map(f => (f === oldLabel || f === oldValue) ? cleanLabel : f);
+            changed = true;
+          }
+        } else if (target.category === 'topografia' && (prop.topografia === oldValue || prop.topografia === oldLabel)) {
+          updatedProp.topografia = newValue;
+          changed = true;
+        } else if (target.category === 'ocupacao_uso' && (prop.ocupacaoUso === oldValue || prop.ocupacaoUso === oldLabel)) {
+          updatedProp.ocupacaoUso = newValue;
+          changed = true;
+        }
+
+        if (changed) {
+          updateProperty(updatedProp).catch(() => {});
+        }
+      });
+    }
+
+    return { success: true };
+  };
+
   // Notifications
   const markNotificationRead = (id: string) => {
     updateDoc(doc(db, 'notifications', id), { read: true }).catch(err => console.error('Error marking notification read:', err));
@@ -2236,7 +2565,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       documents,
       crmTasks,
       auditLogs,
-      siteConfig
+      siteConfig,
+      configurableOptions
     }, label || `Backup Manual do Usuário - ${new Date().toLocaleTimeString().slice(0, 5)}`, 'manual');
 
     setLastSaveStatus({
@@ -2274,7 +2604,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         documents,
         crmTasks,
         auditLogs,
-        siteConfig
+        siteConfig,
+        configurableOptions
       }, `Snapshot de Emergência Pré-Restauração (${new Date().toLocaleTimeString().slice(0, 5)})`, 'pre_update');
 
       const d = snapshot.data;
@@ -2334,6 +2665,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await setDoc(doc(db, 'settings', 'siteConfig'), cleanForFirestore(d.siteConfig), { merge: true });
       }
 
+      if (d.configurableOptions) {
+        const restored = await checkAndRestore('configurable_options', d.configurableOptions);
+        setConfigurableOptions(restored);
+        await idbBulkPut('configurableOptions', restored);
+      }
+
       setLastSaveStatus({ status: 'saved', message: 'Backup restaurado com sucesso!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
       addAuditLog({
         action: 'Restauração de Backup Realizada',
@@ -2364,7 +2701,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       documents,
       crmTasks,
       auditLogs,
-      siteConfig
+      siteConfig,
+      configurableOptions
     };
     createSystemSnapshot(currentData, `Exportação de Segurança - ${new Date().toLocaleTimeString().slice(0, 5)}`, 'export').then(snap => {
       exportBackupToFile(snap);
@@ -2432,6 +2770,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         crmTasks,
         auditLogs,
         siteConfig,
+        configurableOptions,
         isOnline,
         lastSaveStatus,
         createManualBackup,
@@ -2493,6 +2832,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSiteConfig,
         toggleDarkMode,
         setLanguage,
+        addConfigurableOption,
+        updateConfigurableOption,
+        deleteConfigurableOption,
+        toggleConfigurableOptionStatus,
+        reorderConfigurableOptions,
+        renameConfigurableOption,
         markNotificationRead,
         markAllNotificationsRead,
         fcmPermissionStatus,

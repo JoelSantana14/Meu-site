@@ -10,6 +10,7 @@ import { ComissoesManager } from './components/ComissoesManager';
 import { EstatisticasRelatorios } from './components/EstatisticasRelatorios';
 import { ChatInterno } from './components/ChatInterno';
 import { ConfiguradorHtmlTema } from './components/ConfiguradorHtmlTema';
+import { ConfiguradorOpcoesCampos } from './components/ConfiguradorOpcoesCampos';
 import { GerenciadorUsuarios } from './components/GerenciadorUsuarios';
 import { QuemSomosPage } from './components/QuemSomosPage';
 import { IndicesOficiaisPage } from './components/IndicesOficiaisPage';
@@ -143,7 +144,7 @@ const MainContent: React.FC = () => {
 
   // List of internal management tabs that require login
   const restrictedTabs = [
-    'crm', 'agenda', 'agendamentos', 'comissoes', 'relatorios', 'estatisticas', 'imoveis', 'chat', 'configuracoes', 'usuarios', 'menu_grade'
+    'crm', 'agenda', 'agendamentos', 'comissoes', 'relatorios', 'estatisticas', 'imoveis', 'chat', 'configuracoes', 'usuarios', 'menu_grade', 'opcoes_campos'
   ];
   const isRestrictedTab = restrictedTabs.includes(activeTab);
 
@@ -215,6 +216,7 @@ const MainContent: React.FC = () => {
             {(activeTab === 'relatorios' || activeTab === 'estatisticas') && <EstatisticasRelatorios />}
             {activeTab === 'chat' && <ChatInterno />}
             {activeTab === 'configuracoes' && <ConfiguradorHtmlTema />}
+            {activeTab === 'opcoes_campos' && <ConfiguradorOpcoesCampos />}
             {activeTab === 'usuarios' && <GerenciadorUsuarios />}
             {activeTab === 'menu_grade' && (
               <div className="max-w-7xl mx-auto p-4 sm:p-6">

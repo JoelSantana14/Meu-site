@@ -46,14 +46,44 @@ export type PropertyType =
   | 'area_lazer'
   | 'terreno'
   | 'cobertura'
-  | 'comercial';
+  | 'comercial'
+  | string;
 
-export type PropertyPurpose = 'venda' | 'aluguel';
+export type PropertyPurpose = 'venda' | 'aluguel' | string;
 export type HighlightLevel = 'super_destaque' | 'destaque' | 'standard';
 export type PropertyStatus = 'disponivel' | 'reservado' | 'vendido';
 
-export type TopografiaType = 'plano' | 'aclive' | 'declive' | 'irregular' | 'outros';
-export type OcupacaoUsoType = 'rural' | 'residencial' | 'condominio' | 'comercial' | 'misto';
+export type TopografiaType = 'plano' | 'aclive' | 'declive' | 'irregular' | 'outros' | string;
+export type OcupacaoUsoType = 'rural' | 'residencial' | 'condominio' | 'comercial' | 'misto' | string;
+
+export type ConfigurableFieldCategory =
+  | 'tipo_imovel'
+  | 'caracteristica_imovel'
+  | 'caracteristica_empreendimento'
+  | 'caracteristica_regiao'
+  | 'topografia'
+  | 'ocupacao_uso'
+  | 'tarja_foto'
+  | 'estagio_negociacao'
+  | 'paleta_tom'
+  | 'quadro_banner'
+  | 'quadro_vitrine'
+  | 'rede_social'
+  | 'item_rodape'
+  | 'bloco_conteudo'
+  | 'finalidade';
+
+export interface ConfigurableOption {
+  id: string;
+  category: ConfigurableFieldCategory;
+  label: string;
+  value: string;
+  order: number;
+  active: boolean; // default true. If false, hidden from new form selects, preserved in old properties
+  createdAt: string;
+  updatedAt?: string;
+  isSystemDefault?: boolean;
+}
 
 export interface FiftyPartnerInfo {
   enabled: boolean;
@@ -128,8 +158,12 @@ export interface Property {
     complement?: string;
   };
   features: string[];
+  featuresRegiao?: string[]; // Características da região/vizinhança (Escola, Hospital, Supermercado, etc.)
+  featuresEmpreendimento?: string[]; // Características do condomínio/empreendimento
   images: string[];
   imageDescriptions?: Record<string, string>; // Maps image URL or ID/Index to description/caption
+  tarja?: string; // Tarja de foto padrão ou personalizada (Ex: 'Destaque', 'Oportunidade', 'Lançamento', 'Exclusivo', etc.)
+  tarjaCustomColor?: string; // Cor personalizada para a tarja
   agentId: string;
   createdAt: string;
   
@@ -511,6 +545,7 @@ export interface SystemBackupSnapshot {
     visitsCount: number;
     commissionsCount: number;
     htmlBlocksCount: number;
+    optionsCount?: number;
     hasConfig: boolean;
   };
   data: {
@@ -525,6 +560,7 @@ export interface SystemBackupSnapshot {
     crmTasks: CrmTask[];
     auditLogs: AuditLogEntry[];
     siteConfig: SiteConfig;
+    configurableOptions?: ConfigurableOption[];
   };
   checksum?: string;
 }

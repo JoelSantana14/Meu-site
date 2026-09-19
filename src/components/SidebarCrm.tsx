@@ -132,6 +132,7 @@ export const SidebarCrm: React.FC<SidebarCrmProps> = ({ isMobileOpen = false, on
       items: [
         { id: 'imoveis_listar', label: 'Listar Imóveis', icon: Building2, tab: 'imoveis' },
         { id: 'imoveis_cadastrar', label: 'Cadastrar Imóvel', icon: PlusCircle, tab: 'imoveis' },
+        { id: 'imoveis_campos', label: 'Campos & Opções Dinâmicas', icon: Sliders, tab: 'opcoes_campos' },
         { id: 'imoveis_destaques', label: 'Vitrine & Fotos', icon: Sparkles, tab: 'imoveis' },
         { id: 'imoveis_docs', label: 'Documentos do Imóvel', icon: FolderOpen, tab: 'imoveis' }
       ]
@@ -206,6 +207,7 @@ export const SidebarCrm: React.FC<SidebarCrmProps> = ({ isMobileOpen = false, on
       title: 'Configurações',
       icon: Settings,
       items: [
+        { id: 'cfg_campos', label: 'Campos & Listas de Opções', icon: Sliders, tab: 'opcoes_campos' },
         { id: 'cfg_dados', label: 'Dados do Corretor / CRECI', icon: Settings, tab: 'configuracoes' },
         { id: 'cfg_banner', label: 'Banner & Tema do Site', icon: Sliders, tab: 'configuracoes' },
         { id: 'cfg_usuarios', label: 'Usuários & Permissões', icon: Shield, tab: 'usuarios' }

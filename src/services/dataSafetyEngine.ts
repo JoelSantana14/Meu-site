@@ -3,7 +3,7 @@ import { db } from '../lib/firebase';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const DB_NAME = 'ImobiPro_DurableDataStore_v1';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = [
   'properties',
@@ -17,6 +17,7 @@ const STORES = [
   'crmTasks',
   'auditLogs',
   'settings',
+  'configurableOptions',
   'systemBackups',
   'changeHistory',
   'pendingSyncQueue'
@@ -256,6 +257,7 @@ export async function createSystemSnapshot(
     visitsCount: data.visits?.length || 0,
     commissionsCount: data.commissions?.length || 0,
     htmlBlocksCount: data.customHtmlBlocks?.length || 0,
+    optionsCount: data.configurableOptions?.length || 0,
     hasConfig: Boolean(data.siteConfig)
   };
 
@@ -276,7 +278,8 @@ export async function createSystemSnapshot(
       documents: data.documents || [],
       crmTasks: data.crmTasks || [],
       auditLogs: data.auditLogs || [],
-      siteConfig: data.siteConfig
+      siteConfig: data.siteConfig,
+      configurableOptions: data.configurableOptions || []
     }
   };
 

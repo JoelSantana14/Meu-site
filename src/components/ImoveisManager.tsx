@@ -9,12 +9,15 @@ import {
   TopografiaType,
   OcupacaoUsoType,
   FiftyPartnerInfo,
-  LegalDocType
+  LegalDocType,
+  ConfigurableFieldCategory,
+  ConfigurableOption
 } from '../types';
 import { PROPERTY_TYPE_OPTIONS, getPropertyTypeLabel } from '../utils/propertyHelpers';
 import { fetchAddressByCep, formatCep, formatCurrencyBRL, parseCurrencyInput } from '../utils/cepHelper';
 import { DocumentosJuridicosModal } from './DocumentosJuridicosModal';
 import { ArchiveReasonModal } from './ArchiveReasonModal';
+import { InlineOptionCreatorModal } from './InlineOptionCreatorModal';
 import {
   Building2,
   Plus,
@@ -67,7 +70,8 @@ export const ImoveisManager: React.FC = () => {
     clearAllProperties,
     users,
     currentUser,
-    addAuditLog
+    addAuditLog,
+    configurableOptions
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -171,6 +175,8 @@ export const ImoveisManager: React.FC = () => {
   const [parkingSpaces, setParkingSpaces] = useState<number | ''>(1);
   const [highlight, setHighlight] = useState<HighlightLevel>('standard');
   const [status, setStatus] = useState<PropertyStatus>('disponivel');
+  const [tarja, setTarja] = useState<string>('');
+  const [tarjaCustomColor, setTarjaCustomColor] = useState<string>('#e11d48');
   
   // Specific conditional fields
   const [testadaMeters, setTestadaMeters] = useState<number | ''>('');
@@ -212,7 +218,14 @@ export const ImoveisManager: React.FC = () => {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [agentId, setAgentId] = useState<string>(currentUser?.id || users[0]?.id || '');
   const [featuresText, setFeaturesText] = useState('Piscina, Varanda Gourmet, Ar Condicionado, Segurança 24h');
+  const [featuresRegiaoText, setFeaturesRegiaoText] = useState('Escola, Supermercado, Farmácia, Ponto de Ônibus');
+  const [featuresEmpreendimentoText, setFeaturesEmpreendimentoText] = useState('Portaria 24h, Salão de Festas, Playground');
+  const [inlineModalConfig, setInlineModalConfig] = useState<{
+    isOpen: boolean;
+    category: ConfigurableFieldCategory;
+  } | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const showToast = (type: 'success' | 'error', text: string) => {
@@ -289,6 +302,74 @@ export const ImoveisManager: React.FC = () => {
     setIptuInputMask(formatCurrencyBRL(num));
   };
 
+  // Dynamic Configurable Options Lists from Context
+  const tipoImovelOptions = (configurableOptions || [])
+    .filter(o => o.category === 'tipo_imovel' && (o.active || o.value === type))
+    .sort((a, b) => a.order - b.order);
+
+  const topografiaOptions = (configurableOptions || [])
+    .filter(o => o.category === 'topografia' && (o.active || o.value === topografia))
+    .sort((a, b) => a.order - b.order);
+
+  const ocupacaoUsoOptions = (configurableOptions || [])
+    .filter(o => o.category === 'ocupacao_uso' && (o.active || o.value === ocupacaoUso))
+    .sort((a, b) => a.order - b.order);
+
+  const caracteristicaImovelOptions = (configurableOptions || [])
+    .filter(o => o.category === 'caracteristica_imovel' && o.active)
+    .sort((a, b) => a.order - b.order);
+
+  const caracteristicaRegiaoOptions = (configurableOptions || [])
+    .filter(o => o.category === 'caracteristica_regiao' && o.active)
+    .sort((a, b) => a.order - b.order);
+
+  const caracteristicaEmpreendimentoOptions = (configurableOptions || [])
+    .filter(o => o.category === 'caracteristica_empreendimento' && o.active)
+    .sort((a, b) => a.order - b.order);
+
+  const tarjaFotoOptions = (configurableOptions || [])
+    .filter(o => o.category === 'tarja_foto' && (o.active || o.label === tarja || o.value === tarja))
+    .sort((a, b) => a.order - b.order);
+
+  const toggleFeatureTag = (tag: string, currentText: string, setText: (val: string) => void) => {
+    const currentList = currentText.split(',').map(s => s.trim()).filter(Boolean);
+    const exists = currentList.some(item => item.toLowerCase() === tag.toLowerCase());
+    if (exists) {
+      const updated = currentList.filter(item => item.toLowerCase() !== tag.toLowerCase());
+      setText(updated.join(', '));
+    } else {
+      const updated = [...currentList, tag];
+      setText(updated.join(', '));
+    }
+  };
+
+  const handleInlineOptionCreated = (newOption: ConfigurableOption) => {
+    if (newOption.category === 'tipo_imovel') {
+      setType(newOption.value as PropertyType);
+    } else if (newOption.category === 'topografia') {
+      setTopografia(newOption.value as TopografiaType);
+    } else if (newOption.category === 'ocupacao_uso') {
+      setOcupacaoUso(newOption.value as OcupacaoUsoType);
+    } else if (newOption.category === 'tarja_foto') {
+      setTarja(newOption.label);
+    } else if (newOption.category === 'caracteristica_imovel') {
+      const currentList = featuresText.split(',').map(s => s.trim()).filter(Boolean);
+      if (!currentList.some(item => item.toLowerCase() === newOption.label.toLowerCase())) {
+        setFeaturesText(currentList.length > 0 ? `${featuresText}, ${newOption.label}` : newOption.label);
+      }
+    } else if (newOption.category === 'caracteristica_regiao') {
+      const currentList = featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean);
+      if (!currentList.some(item => item.toLowerCase() === newOption.label.toLowerCase())) {
+        setFeaturesRegiaoText(currentList.length > 0 ? `${featuresRegiaoText}, ${newOption.label}` : newOption.label);
+      }
+    } else if (newOption.category === 'caracteristica_empreendimento') {
+      const currentList = featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean);
+      if (!currentList.some(item => item.toLowerCase() === newOption.label.toLowerCase())) {
+        setFeaturesEmpreendimentoText(currentList.length > 0 ? `${featuresEmpreendimentoText}, ${newOption.label}` : newOption.label);
+      }
+    }
+  };
+
   const handleOpenAddModal = () => {
     setEditingPropId(null);
     setTitle('');
@@ -305,6 +386,8 @@ export const ImoveisManager: React.FC = () => {
     setParkingSpaces(2);
     setHighlight('standard');
     setStatus('disponivel');
+    setTarja('');
+    setTarjaCustomColor('#e11d48');
 
     // Conditional fields reset
     setTestadaMeters('');
@@ -340,6 +423,8 @@ export const ImoveisManager: React.FC = () => {
     setUrlInput('');
     setAgentId(currentUser?.id || users[0]?.id || '');
     setFeaturesText('Piscina, Churrasqueira, Portaria 24h, Ar Condicionado');
+    setFeaturesRegiaoText('Escola, Supermercado, Farmácia, Ponto de Ônibus');
+    setFeaturesEmpreendimentoText('Portaria 24h, Salão de Festas, Playground');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -360,6 +445,8 @@ export const ImoveisManager: React.FC = () => {
     setParkingSpaces(p.parkingSpaces);
     setHighlight(p.highlight);
     setStatus(p.status);
+    setTarja(p.tarja || '');
+    setTarjaCustomColor(p.tarjaCustomColor || '#e11d48');
 
     // Specific conditional fields
     setTestadaMeters(p.testadaMeters || '');
@@ -407,6 +494,8 @@ export const ImoveisManager: React.FC = () => {
     setUrlInput('');
     setAgentId(p.agentId);
     setFeaturesText(p.features ? p.features.join(', ') : '');
+    setFeaturesRegiaoText(p.featuresRegiao ? p.featuresRegiao.join(', ') : '');
+    setFeaturesEmpreendimentoText(p.featuresEmpreendimento ? p.featuresEmpreendimento.join(', ') : '');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -598,7 +687,7 @@ export const ImoveisManager: React.FC = () => {
     setDragOverIndex(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -636,6 +725,8 @@ export const ImoveisManager: React.FC = () => {
     const finalCode = code.trim() || `JS-${Math.floor(1000 + Math.random() * 9000)}`;
     const finalAgentId = agentId || currentUser?.id || users[0]?.id || 'usr_master_joel';
     const featArray = featuresText.split(',').map(s => s.trim()).filter(Boolean);
+    const featRegiaoArray = featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean);
+    const featEmpreendArray = featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean);
     const finalImages = images.length > 0 ? images : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200'];
 
     const fiftyData: FiftyPartnerInfo | undefined = isFiftyEnabled ? {
@@ -649,6 +740,7 @@ export const ImoveisManager: React.FC = () => {
       notes: partnerNotes.trim() || undefined
     } : undefined;
 
+    setIsSaving(true);
     try {
       if (editingPropId) {
         const existing = properties.find(p => p.id === editingPropId);
@@ -681,17 +773,27 @@ export const ImoveisManager: React.FC = () => {
               complement: complement.trim() || undefined
             },
             features: featArray,
+            featuresRegiao: featRegiaoArray,
+            featuresEmpreendimento: featEmpreendArray,
             images: finalImages,
             imageDescriptions,
             agentId: finalAgentId,
             testadaMeters: testadaMeters ? parseNum(testadaMeters) : undefined,
             topografia,
             ocupacaoUso,
+            tarja: tarja || undefined,
+            tarjaCustomColor: tarjaCustomColor || undefined,
             fifty: fiftyData
           };
 
-          updateProperty(updatedProp);
-          showToast('success', 'Imóvel atualizado com sucesso no catálogo!');
+          const res = await updateProperty(updatedProp);
+          if (res && res.success === false) {
+            setFormError(res.error || 'Erro ao atualizar imóvel.');
+            setIsSaving(false);
+            return;
+          }
+
+          showToast('success', 'Imóvel atualizado e gravado com sucesso no banco de dados!');
 
           addAuditLog({
             action: 'Atualização de Imóvel',
@@ -701,7 +803,7 @@ export const ImoveisManager: React.FC = () => {
           });
         }
       } else {
-        addProperty({
+        const res = await addProperty({
           code: finalCode,
           title: title.trim(),
           description: description.trim(),
@@ -728,15 +830,26 @@ export const ImoveisManager: React.FC = () => {
             complement: complement.trim() || undefined
           },
           features: featArray,
+          featuresRegiao: featRegiaoArray,
+          featuresEmpreendimento: featEmpreendArray,
           images: finalImages,
           imageDescriptions,
           agentId: finalAgentId,
           testadaMeters: testadaMeters ? parseNum(testadaMeters) : undefined,
           topografia,
           ocupacaoUso,
+          tarja: tarja || undefined,
+          tarjaCustomColor: tarjaCustomColor || undefined,
           fifty: fiftyData
         });
-        showToast('success', 'Novo imóvel cadastrado com sucesso!');
+
+        if (res && res.success === false) {
+          setFormError(res.error || 'Erro ao gravar imóvel no banco de dados.');
+          setIsSaving(false);
+          return;
+        }
+
+        showToast('success', 'Novo imóvel cadastrado e salvo com sucesso no banco de dados!');
 
         addAuditLog({
           action: 'Cadastro de Novo Imóvel',
@@ -750,6 +863,8 @@ export const ImoveisManager: React.FC = () => {
     } catch (err: any) {
       console.error('Error in property submit:', err);
       setFormError('Erro ao salvar imóvel. Verifique os dados informados.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1230,20 +1345,36 @@ export const ImoveisManager: React.FC = () => {
               {/* Type, Purpose & Financials */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Tipo de Imóvel *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase text-xs">Tipo de Imóvel *</label>
+                    <button
+                      type="button"
+                      onClick={() => setInlineModalConfig({ isOpen: true, category: 'tipo_imovel' })}
+                      className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-black hover:underline flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Novo Tipo</span>
+                    </button>
+                  </div>
                   <select
                     value={type}
                     onChange={e => setType(e.target.value as PropertyType)}
                     className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
                   >
-                    {PROPERTY_TYPE_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
+                    {tipoImovelOptions.length > 0 ? (
+                      tipoImovelOptions.map(opt => (
+                        <option key={opt.id} value={opt.value}>{opt.label}</option>
+                      ))
+                    ) : (
+                      PROPERTY_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))
+                    )}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Finalidade</label>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1 text-xs">Finalidade</label>
                   <select
                     value={purpose}
                     onChange={e => setPurpose(e.target.value as PropertyPurpose)}
@@ -1255,7 +1386,7 @@ export const ImoveisManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Preço (R$) *</label>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1 text-xs">Preço (R$) *</label>
                   <input
                     type="number"
                     required
@@ -1267,7 +1398,7 @@ export const ImoveisManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Taxa Condomínio (R$)</label>
+                  <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1 text-xs">Taxa Condomínio (R$)</label>
                   <input
                     type="number"
                     value={condoFee}
@@ -1292,7 +1423,7 @@ export const ImoveisManager: React.FC = () => {
                   {/* Testada (metragem de frente) - condicional para terrenos, chácaras e casas */}
                   {isTerrainOrHouseOrFarm && (
                     <div className="animate-in fade-in duration-150">
-                      <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                      <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1 text-xs">
                         Testada / Frente (Metros)
                       </label>
                       <input
@@ -1309,43 +1440,79 @@ export const ImoveisManager: React.FC = () => {
 
                   {/* Topografia (select: plano, aclive, declive, irregular, outros) */}
                   <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
-                      Topografia do Terreno
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase text-xs">
+                        Topografia do Terreno
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setInlineModalConfig({ isOpen: true, category: 'topografia' })}
+                        className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-black hover:underline flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Nova</span>
+                      </button>
+                    </div>
                     <select
                       value={topografia}
                       onChange={e => setTopografia(e.target.value as TopografiaType)}
                       className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
                     >
-                      <option value="plano">Plano</option>
-                      <option value="aclive">Aclive</option>
-                      <option value="declive">Declive</option>
-                      <option value="irregular">Irregular</option>
-                      <option value="outros">Outros</option>
+                      {topografiaOptions.length > 0 ? (
+                        topografiaOptions.map(opt => (
+                          <option key={opt.id} value={opt.value}>{opt.label}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="plano">Plano</option>
+                          <option value="aclive">Aclive</option>
+                          <option value="declive">Declive</option>
+                          <option value="irregular">Irregular</option>
+                          <option value="outros">Outros</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
                   {/* Tipo de Ocupação / Uso: Rural, Residencial ou Condomínio */}
                   <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
-                      Tipo de Ocupação / Uso
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase text-xs">
+                        Tipo de Ocupação / Uso
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setInlineModalConfig({ isOpen: true, category: 'ocupacao_uso' })}
+                        className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-black hover:underline flex items-center gap-0.5"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Novo</span>
+                      </button>
+                    </div>
                     <select
                       value={ocupacaoUso}
                       onChange={e => setOcupacaoUso(e.target.value as OcupacaoUsoType)}
                       className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
                     >
-                      <option value="residencial">Residencial</option>
-                      <option value="condominio">Condomínio Fechado</option>
-                      <option value="rural">Rural</option>
-                      <option value="comercial">Comercial</option>
-                      <option value="misto">Misto</option>
+                      {ocupacaoUsoOptions.length > 0 ? (
+                        ocupacaoUsoOptions.map(opt => (
+                          <option key={opt.id} value={opt.value}>{opt.label}</option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="residencial">Residencial</option>
+                          <option value="condominio">Condomínio Fechado</option>
+                          <option value="rural">Rural</option>
+                          <option value="comercial">Comercial</option>
+                          <option value="misto">Misto</option>
+                        </>
+                      )}
                     </select>
                   </div>
 
                   {/* Valor de IPTU (Campo monetário com máscara) */}
                   <div>
-                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1 text-xs">
                       Valor de IPTU (R$)
                     </label>
                     <input
@@ -1697,7 +1864,7 @@ export const ImoveisManager: React.FC = () => {
               </div>
 
               {/* Status, Highlights & Broker Assignment */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div>
                   <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Destaque na Vitrine</label>
                   <div className="p-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -1729,6 +1896,46 @@ export const ImoveisManager: React.FC = () => {
                       <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
+                </div>
+
+                {/* Tarja de Foto (Visual Ribbon) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase text-xs">
+                      Tarja da Foto
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setInlineModalConfig({ isOpen: true, category: 'tarja_foto' })}
+                      className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline font-black flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Gerenciar</span>
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <select
+                      value={tarja}
+                      onChange={e => setTarja(e.target.value)}
+                      className="flex-1 p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold text-xs text-rose-600 dark:text-rose-400"
+                    >
+                      <option value="">Sem Tarja</option>
+                      {tarjaFotoOptions.map(opt => (
+                        <option key={opt.id} value={opt.label}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    {tarja && (
+                      <input
+                        type="color"
+                        value={tarjaCustomColor}
+                        onChange={e => setTarjaCustomColor(e.target.value)}
+                        className="w-9 h-9 p-0.5 border border-slate-200 dark:border-slate-700 rounded-xl cursor-pointer shrink-0 self-center"
+                        title="Cor da tarja"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1971,31 +2178,190 @@ export const ImoveisManager: React.FC = () => {
                 )}
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-600 dark:text-slate-400 uppercase mb-1">Recursos / Diferenciais (Separados por vírgula)</label>
-                <input
-                  type="text"
-                  value={featuresText}
-                  onChange={e => setFeaturesText(e.target.value)}
-                  placeholder="Piscina, Espaço Gourmet, Ar Condicionado, Gerador..."
-                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
-                />
+              {/* ==================== 4. CARACTERÍSTICAS & RECURSOS CONFIGURÁVEIS ==================== */}
+              <div className="space-y-4 pt-2">
+                {/* Características do Imóvel */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block font-black text-xs text-slate-800 dark:text-slate-200 uppercase">
+                        Recursos & Diferenciais do Imóvel
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Clique nas opções abaixo para selecionar ou digite livremente separado por vírgulas.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInlineModalConfig({ isOpen: true, category: 'caracteristica_imovel' })}
+                      className="px-2.5 py-1 text-xs font-black text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg flex items-center gap-1 border border-indigo-200 dark:border-indigo-900/60 transition-all shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Nova Opção</span>
+                    </button>
+                  </div>
+
+                  {caracteristicaImovelOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {caracteristicaImovelOptions.map(opt => {
+                        const isSelected = featuresText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => toggleFeatureTag(opt.label, featuresText, setFeaturesText)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={featuresText}
+                    onChange={e => setFeaturesText(e.target.value)}
+                    placeholder="Piscina, Espaço Gourmet, Ar Condicionado, Gerador..."
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                  />
+                </div>
+
+                {/* Características do Empreendimento / Lazer / Condomínio */}
+                <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block font-black text-xs text-emerald-900 dark:text-emerald-300 uppercase">
+                        Características do Empreendimento / Condomínio
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Áreas comuns, lazer, segurança e facilidades do condomínio.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInlineModalConfig({ isOpen: true, category: 'caracteristica_empreendimento' })}
+                      className="px-2.5 py-1 text-xs font-black text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100/60 dark:hover:bg-emerald-950/60 rounded-lg flex items-center gap-1 border border-emerald-300 dark:border-emerald-800 transition-all shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Nova Opção</span>
+                    </button>
+                  </div>
+
+                  {caracteristicaEmpreendimentoOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {caracteristicaEmpreendimentoOptions.map(opt => {
+                        const isSelected = featuresEmpreendimentoText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => toggleFeatureTag(opt.label, featuresEmpreendimentoText, setFeaturesEmpreendimentoText)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={featuresEmpreendimentoText}
+                    onChange={e => setFeaturesEmpreendimentoText(e.target.value)}
+                    placeholder="Piscina adulto/infantil, Playground, Pista de caminhada, Portaria 24h..."
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                  />
+                </div>
+
+                {/* Características da Região / Entorno */}
+                <div className="p-4 bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-900/50 rounded-2xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block font-black text-xs text-sky-900 dark:text-sky-300 uppercase">
+                        Características da Região & Entorno
+                      </label>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Proximidades de comércio, serviços, saúde, transporte e escolas.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setInlineModalConfig({ isOpen: true, category: 'caracteristica_regiao' })}
+                      className="px-2.5 py-1 text-xs font-black text-sky-700 dark:text-sky-300 hover:bg-sky-100/60 dark:hover:bg-sky-950/60 rounded-lg flex items-center gap-1 border border-sky-300 dark:border-sky-800 transition-all shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Nova Opção</span>
+                    </button>
+                  </div>
+
+                  {caracteristicaRegiaoOptions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {caracteristicaRegiaoOptions.map(opt => {
+                        const isSelected = featuresRegiaoText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => toggleFeatureTag(opt.label, featuresRegiaoText, setFeaturesRegiaoText)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                              isSelected
+                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
+                            }`}
+                          >
+                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <input
+                    type="text"
+                    value={featuresRegiaoText}
+                    onChange={e => setFeaturesRegiaoText(e.target.value)}
+                    placeholder="Escola, Posto de Saúde, Supermercado, Academia, Shopping..."
+                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-all"
+                  disabled={isSaving}
+                  className="px-5 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs transition-all disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/25 transition-all text-xs flex items-center gap-2"
+                  disabled={isSaving}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl shadow-lg hover:shadow-indigo-500/25 transition-all text-xs flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>{editingPropId ? 'Salvar Alterações do Imóvel' : 'Cadastrar Imóvel no Catálogo'}</span>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Gravando no Banco de Dados...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4" />
+                      <span>{editingPropId ? 'Salvar Alterações do Imóvel' : 'Cadastrar Imóvel no Catálogo'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -2124,6 +2490,16 @@ export const ImoveisManager: React.FC = () => {
           itemType={archiveModalConfig.itemType}
           itemName={archiveModalConfig.itemName}
           onConfirm={archiveModalConfig.onConfirm}
+        />
+      )}
+
+      {/* INLINE OPTION CREATOR MODAL */}
+      {inlineModalConfig && (
+        <InlineOptionCreatorModal
+          isOpen={inlineModalConfig.isOpen}
+          onClose={() => setInlineModalConfig(null)}
+          category={inlineModalConfig.category}
+          onOptionCreated={handleInlineOptionCreated}
         />
       )}
 

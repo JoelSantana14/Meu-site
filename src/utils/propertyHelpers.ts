@@ -1,6 +1,11 @@
-import { PropertyType } from '../types';
+import { PropertyType, ConfigurableOption, TopografiaType, OcupacaoUsoType } from '../types';
 
-export function getPropertyTypeLabel(type: PropertyType): string {
+export function getPropertyTypeLabel(type: PropertyType, options?: ConfigurableOption[]): string {
+  if (options && options.length > 0) {
+    const match = options.find(o => o.category === 'tipo_imovel' && (o.value === type || o.label.toLowerCase() === (type || '').toLowerCase()));
+    if (match) return match.label;
+  }
+
   switch (type) {
     case 'casa':
       return 'Casa';
@@ -23,7 +28,41 @@ export function getPropertyTypeLabel(type: PropertyType): string {
     case 'comercial':
       return 'Comercial Geral';
     default:
-      return 'Imóvel';
+      if (!type) return 'Imóvel';
+      // If custom capitalized or slug string, format nicely
+      return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
+  }
+}
+
+export function getTopografiaLabel(topografia?: TopografiaType, options?: ConfigurableOption[]): string {
+  if (!topografia) return '';
+  if (options && options.length > 0) {
+    const match = options.find(o => o.category === 'topografia' && (o.value === topografia || o.label.toLowerCase() === topografia.toLowerCase()));
+    if (match) return match.label;
+  }
+  switch (topografia) {
+    case 'plano': return 'Plano';
+    case 'aclive': return 'Aclive';
+    case 'declive': return 'Declive';
+    case 'irregular': return 'Irregular';
+    case 'outros': return 'Outros';
+    default: return topografia.charAt(0).toUpperCase() + topografia.slice(1).replace(/_/g, ' ');
+  }
+}
+
+export function getOcupacaoUsoLabel(ocupacao?: OcupacaoUsoType, options?: ConfigurableOption[]): string {
+  if (!ocupacao) return '';
+  if (options && options.length > 0) {
+    const match = options.find(o => o.category === 'ocupacao_uso' && (o.value === ocupacao || o.label.toLowerCase() === ocupacao.toLowerCase()));
+    if (match) return match.label;
+  }
+  switch (ocupacao) {
+    case 'residencial': return 'Residencial';
+    case 'comercial': return 'Comercial';
+    case 'condominio': return 'Condomínio Fechado';
+    case 'misto': return 'Misto (Residencial e Comercial)';
+    case 'rural': return 'Rural / Agrícola';
+    default: return ocupacao.charAt(0).toUpperCase() + ocupacao.slice(1).replace(/_/g, ' ');
   }
 }
 

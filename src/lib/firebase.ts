@@ -4,7 +4,7 @@ import { getMessaging, isSupported } from 'firebase/messaging';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
+export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId || '(default)');
 
 export let messaging: ReturnType<typeof getMessaging> | null = null;
 if (typeof window !== 'undefined') {
@@ -16,4 +16,6 @@ if (typeof window !== 'undefined') {
 }
 
 export default app;
+
+
 

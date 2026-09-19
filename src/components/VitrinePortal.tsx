@@ -979,7 +979,16 @@ export const VitrinePortal: React.FC = () => {
                           Destaque
                         </span>
                       ) : null}
-                      {prop.images && prop.images.length >= 3 && prop.highlight !== 'super_destaque' && (
+                      {prop.tarja && (
+                        <span
+                          style={prop.tarjaCustomColor ? { backgroundColor: prop.tarjaCustomColor } : undefined}
+                          className="px-2.5 py-1 rounded-xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1"
+                        >
+                          <Award className="w-3 h-3" />
+                          <span>{prop.tarja}</span>
+                        </span>
+                      )}
+                      {prop.images && prop.images.length >= 3 && prop.highlight !== 'super_destaque' && !prop.tarja && (
                         <span className="px-2.5 py-1 rounded-xl bg-amber-500/95 backdrop-blur-md text-slate-950 text-[10px] font-black uppercase tracking-wider shadow-md flex items-center gap-1">
                           <Sparkles className="w-3 h-3 text-slate-950" />
                           <span>Destaque Fotos</span>
@@ -2192,17 +2201,79 @@ export const VitrinePortal: React.FC = () => {
                 );
               })()}
 
-              {/* Features Chips */}
-              <div className="space-y-2">
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white">Diferenciais e Infraestrutura</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedPropertyDetail.features.map((feat, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold flex items-center gap-1">
-                      <Check className="w-3 h-3 text-indigo-500" />
-                      <span>{feat}</span>
-                    </span>
-                  ))}
+              {/* Topografia, Testada, Ocupação e IPTU if present */}
+              {(selectedPropertyDetail.topografia || selectedPropertyDetail.ocupacaoUso || selectedPropertyDetail.testadaMeters || selectedPropertyDetail.iptuAnnual) && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 bg-indigo-50/40 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 text-xs">
+                  {selectedPropertyDetail.topografia && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Topografia</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">{selectedPropertyDetail.topografia}</span>
+                    </div>
+                  )}
+                  {selectedPropertyDetail.ocupacaoUso && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Ocupação / Uso</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 capitalize">{selectedPropertyDetail.ocupacaoUso}</span>
+                    </div>
+                  )}
+                  {selectedPropertyDetail.testadaMeters ? (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Testada (Frente)</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">{selectedPropertyDetail.testadaMeters} m</span>
+                    </div>
+                  ) : null}
+                  {selectedPropertyDetail.iptuAnnual ? (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">IPTU</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">R$ {selectedPropertyDetail.iptuAnnual.toLocaleString('pt-BR')}</span>
+                    </div>
+                  ) : null}
                 </div>
+              )}
+
+              {/* Features Chips */}
+              <div className="space-y-3">
+                {selectedPropertyDetail.features && selectedPropertyDetail.features.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">Recursos & Diferenciais do Imóvel</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPropertyDetail.features.map((feat, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-semibold flex items-center gap-1 border border-indigo-200/60 dark:border-indigo-900/40">
+                          <Check className="w-3 h-3 text-indigo-500" />
+                          <span>{feat}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedPropertyDetail.featuresEmpreendimento && selectedPropertyDetail.featuresEmpreendimento.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-xs text-emerald-900 dark:text-emerald-300 uppercase tracking-wider">Empreendimento & Lazer</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPropertyDetail.featuresEmpreendimento.map((feat, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 border border-emerald-200/60 dark:border-emerald-900/40">
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          <span>{feat}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedPropertyDetail.featuresRegiao && selectedPropertyDetail.featuresRegiao.length > 0 && (
+                  <div className="space-y-1.5">
+                    <h3 className="font-bold text-xs text-sky-900 dark:text-sky-300 uppercase tracking-wider">Região & Proximidades</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedPropertyDetail.featuresRegiao.map((feat, idx) => (
+                        <span key={idx} className="px-2.5 py-1 bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 rounded-lg text-xs font-semibold flex items-center gap-1 border border-sky-200/60 dark:border-sky-900/40">
+                          <MapPin className="w-3 h-3 text-sky-500" />
+                          <span>{feat}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Contact & Scheduling Actions */}
