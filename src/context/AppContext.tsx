@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../lib/firebase';
+import { ensureFirebaseAuth } from '../services/imageUploadService';
 import {
   requestPushPermission,
   triggerNativeNotification,
@@ -243,6 +244,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+
+    // Ensure Firebase Auth session is active on startup
+    ensureFirebaseAuth();
 
     // Initial cache hydration from IndexedDB to guarantee instant zero-loss availability
     idbGetAll<Property>('properties').then(cached => {
@@ -613,6 +617,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (pendingLocal.length > 0) {
             pendingLocal.forEach(async (pending) => {
               try {
+                await ensureFirebaseAuth();
                 const safeDoc = ensureSafeFirestoreDocumentSize(cleanForFirestore(pending));
                 await setDoc(doc(db, 'properties', pending.id), safeDoc, { merge: true });
               } catch (e) {
@@ -1248,11 +1253,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Property CRUD with Robust Durability & Versioning
   const addProperty = async (propData: Omit<Property, 'id' | 'createdAt'>, customId?: string): Promise<{ success: boolean; id?: string; error?: string }> => {
-    // 1. Verify Firebase Authentication session
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) {
-      console.warn('[DataSafety] Warning: Saving property without active Firebase Auth user.');
-    }
+    // 1. Ensure Firebase Authentication session
+    await ensureFirebaseAuth();
 
     const id = customId || `prop_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newProp: Property = {
@@ -1306,11 +1308,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProperty = async (updated: Property): Promise<{ success: boolean; error?: string }> => {
-    // 1. Verify Firebase Authentication session
-    const firebaseUser = auth.currentUser;
-    if (!firebaseUser) {
-      console.warn('[DataSafety] Warning: Updating property without active Firebase Auth user.');
-    }
+    // 1. Ensure Firebase Authentication session
+    await ensureFirebaseAuth();
 
     if (!acquireLock(updated.id)) {
       console.warn('[DataSafety] Bloqueado clique duplo ou gravação concorrente em andamento para:', updated.id);

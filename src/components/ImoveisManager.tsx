@@ -22,6 +22,7 @@ import { fetchAddressByCep, formatCep, formatCurrencyBRL, parseCurrencyInput } f
 import { DocumentosJuridicosModal } from './DocumentosJuridicosModal';
 import { ArchiveReasonModal } from './ArchiveReasonModal';
 import { InlineOptionCreatorModal } from './InlineOptionCreatorModal';
+import { INITIAL_CONFIGURABLE_OPTIONS } from '../utils/defaultConfigurableOptions';
 import {
   Building2,
   Plus,
@@ -307,45 +308,78 @@ export const ImoveisManager: React.FC = () => {
     setIptuInputMask(formatCurrencyBRL(num));
   };
 
-  // Dynamic Configurable Options Lists from Context
-  const tipoImovelOptions = (configurableOptions || [])
+  // Dynamic Configurable Options Lists from Context + System Defaults Fallback
+  const mergedConfigurableOptions = React.useMemo(() => {
+    const existing = configurableOptions || [];
+    const missingDefaults = INITIAL_CONFIGURABLE_OPTIONS.filter(init => !existing.some(e => e.id === init.id));
+    return [...existing, ...missingDefaults];
+  }, [configurableOptions]);
+
+  const tipoImovelOptions = mergedConfigurableOptions
     .filter(o => o.category === 'tipo_imovel' && (o.active || o.value === type))
     .sort((a, b) => a.order - b.order);
 
-  const topografiaOptions = (configurableOptions || [])
+  const topografiaOptions = mergedConfigurableOptions
     .filter(o => o.category === 'topografia' && (o.active || o.value === topografia))
     .sort((a, b) => a.order - b.order);
 
-  const ocupacaoUsoOptions = (configurableOptions || [])
+  const ocupacaoUsoOptions = mergedConfigurableOptions
     .filter(o => o.category === 'ocupacao_uso' && (o.active || o.value === ocupacaoUso))
     .sort((a, b) => a.order - b.order);
 
-  const caracteristicaImovelOptions = (configurableOptions || [])
+  const caracteristicaImovelOptions = mergedConfigurableOptions
     .filter(o => o.category === 'caracteristica_imovel' && o.active)
     .sort((a, b) => a.order - b.order);
 
-  const caracteristicaRegiaoOptions = (configurableOptions || [])
+  const caracteristicaRegiaoOptions = mergedConfigurableOptions
     .filter(o => o.category === 'caracteristica_regiao' && o.active)
     .sort((a, b) => a.order - b.order);
 
-  const caracteristicaEmpreendimentoOptions = (configurableOptions || [])
+  const caracteristicaEmpreendimentoOptions = mergedConfigurableOptions
     .filter(o => o.category === 'caracteristica_empreendimento' && o.active)
     .sort((a, b) => a.order - b.order);
 
-  const tarjaFotoOptions = (configurableOptions || [])
+  const tarjaFotoOptions = mergedConfigurableOptions
     .filter(o => o.category === 'tarja_foto' && (o.active || o.label === tarja || o.value === tarja))
     .sort((a, b) => a.order - b.order);
 
+  const normalizeFeatureTag = (text: string) => {
+    return text
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  };
+
+  const isFeatureSelected = (tag: string, currentText: string): boolean => {
+    const targetNorm = normalizeFeatureTag(tag);
+    if (!targetNorm) return false;
+    const currentList = currentText.split(',').map(s => normalizeFeatureTag(s)).filter(Boolean);
+    return currentList.some(item => item === targetNorm || item.includes(targetNorm) || targetNorm.includes(item));
+  };
+
   const toggleFeatureTag = (tag: string, currentText: string, setText: (val: string) => void) => {
     const currentList = currentText.split(',').map(s => s.trim()).filter(Boolean);
-    const exists = currentList.some(item => item.toLowerCase() === tag.toLowerCase());
-    if (exists) {
-      const updated = currentList.filter(item => item.toLowerCase() !== tag.toLowerCase());
+    const targetNorm = normalizeFeatureTag(tag);
+    const existingIndex = currentList.findIndex(item => {
+      const itemNorm = normalizeFeatureTag(item);
+      return itemNorm === targetNorm || itemNorm.includes(targetNorm) || targetNorm.includes(itemNorm);
+    });
+
+    if (existingIndex !== -1) {
+      const updated = currentList.filter((_, i) => i !== existingIndex);
       setText(updated.join(', '));
     } else {
-      const updated = [...currentList, tag];
+      const updated = [...currentList, tag.trim()];
       setText(updated.join(', '));
     }
+  };
+
+  const removeFeatureTag = (tagToRemove: string, currentText: string, setText: (val: string) => void) => {
+    const currentList = currentText.split(',').map(s => s.trim()).filter(Boolean);
+    const targetNorm = normalizeFeatureTag(tagToRemove);
+    const updated = currentList.filter(item => normalizeFeatureTag(item) !== targetNorm);
+    setText(updated.join(', '));
   };
 
   const handleInlineOptionCreated = (newOption: ConfigurableOption) => {
@@ -1955,24 +1989,46 @@ export const ImoveisManager: React.FC = () => {
                 {/* Dropzone & Multi-file Input */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all"
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.value = '';
+                        fileInputRef.current.click();
+                      }
+                    }}
+                    className="border-2 border-dashed border-indigo-300 dark:border-indigo-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer bg-indigo-50/50 dark:bg-indigo-950/20 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all select-none"
                   >
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileUpload}
                       multiple
-                      accept="image/*"
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
                       className="hidden"
                     />
                     <Upload className="w-6 h-6 text-indigo-600 dark:text-indigo-400 mb-1" />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       {isProcessingFiles ? 'Comprimindo e Otimizando Fotos...' : 'Selecionar Fotos do Computador/Celular'}
                     </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      PNG, JPG, WEBP (Múltipla seleção permitida)
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                      PNG, JPG, WEBP (Permite selecionar várias fotos juntas ou uma a uma)
                     </span>
+                    <button
+                      type="button"
+                      disabled={isProcessingFiles || images.length >= 35}
+                      className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all pointer-events-none"
+                    >
+                      {isProcessingFiles ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Processando Fotos...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Adicionar Fotos (+{35 - images.length} vagas)</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   {/* Add by Web URL */}
@@ -2014,7 +2070,8 @@ export const ImoveisManager: React.FC = () => {
                     {images.map((img, idx) => {
                       const isBeingDragged = draggedIndex === idx;
                       const isDropTarget = dragOverIndex === idx && draggedIndex !== idx;
-                      const currentDesc = imageDescriptions[img] || imageDescriptions[String(idx)] || '';
+                      const imgUrl = getPropertyImageUrl(img);
+                      const currentDesc = (imgUrl && imageDescriptions[imgUrl]) || imageDescriptions[String(idx)] || '';
 
                       return (
                         <div
@@ -2140,7 +2197,7 @@ export const ImoveisManager: React.FC = () => {
                             <input
                               type="text"
                               value={currentDesc}
-                              onChange={(e) => handleImageDescriptionChange(img, idx, e.target.value)}
+                              onChange={(e) => handleImageDescriptionChange(imgUrl, idx, e.target.value)}
                               placeholder="Ex: Fachada principal, Sala integrada, Cozinha gourmet..."
                               className="w-full px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                             />
@@ -2154,15 +2211,18 @@ export const ImoveisManager: React.FC = () => {
 
               {/* ==================== 4. CARACTERÍSTICAS & RECURSOS CONFIGURÁVEIS ==================== */}
               <div className="space-y-4 pt-2">
-                {/* Características do Imóvel */}
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-2.5">
+                {/* 1. Diferenciais Privativos do Imóvel */}
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block font-black text-xs text-slate-800 dark:text-slate-200 uppercase">
-                        Recursos & Diferenciais do Imóvel
-                      </label>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Clique nas opções abaixo para selecionar ou digite livremente separado por vírgulas.
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                        <label className="font-black text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wide">
+                          Diferenciais & Recursos do Imóvel
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Clique nos botões pré-definidos para ativar ou desativar. Itens ativos ficam em azul com marca de verificação (✓).
                       </p>
                     </div>
                     <button
@@ -2175,46 +2235,89 @@ export const ImoveisManager: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Active tags badges */}
+                  {featuresText.split(',').map(s => s.trim()).filter(Boolean).length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/60">
+                      <span className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300">
+                        Ativas ({featuresText.split(',').map(s => s.trim()).filter(Boolean).length}):
+                      </span>
+                      {featuresText.split(',').map(s => s.trim()).filter(Boolean).map((tag, tIdx) => (
+                        <span key={tIdx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold shadow-xs">
+                          <span>✓ {tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFeatureTag(tag, featuresText, setFeaturesText)}
+                            className="hover:bg-indigo-700 rounded-full p-0.5 transition-colors"
+                            title={`Remover ${tag}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setFeaturesText('')}
+                        className="text-[10px] text-rose-600 dark:text-rose-400 font-bold hover:underline ml-auto"
+                      >
+                        Limpar todas
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Predefined Buttons */}
                   {caracteristicaImovelOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {caracteristicaImovelOptions.map(opt => {
-                        const isSelected = featuresText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        const isSelected = isFeatureSelected(opt.label, featuresText);
                         return (
                           <button
                             key={opt.id}
                             type="button"
                             onClick={() => toggleFeatureTag(opt.label, featuresText, setFeaturesText)}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
                               isSelected
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                                ? 'bg-indigo-600 text-white border-indigo-600 ring-2 ring-indigo-400/40 shadow-sm'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30'
                             }`}
                           >
-                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                            {isSelected ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            )}
+                            <span>{opt.label}</span>
                           </button>
                         );
                       })}
                     </div>
                   )}
 
-                  <input
-                    type="text"
-                    value={featuresText}
-                    onChange={e => setFeaturesText(e.target.value)}
-                    placeholder="Piscina, Espaço Gourmet, Ar Condicionado, Gerador..."
-                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
-                  />
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Edição manual / Características digitadas (separadas por vírgula):
+                    </label>
+                    <input
+                      type="text"
+                      value={featuresText}
+                      onChange={e => setFeaturesText(e.target.value)}
+                      placeholder="Piscina Privativa, Churrasqueira, Ar Condicionado..."
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                    />
+                  </div>
                 </div>
 
-                {/* Características do Empreendimento / Lazer / Condomínio */}
-                <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl space-y-2.5">
+                {/* 2. Características do Empreendimento / Lazer / Condomínio */}
+                <div className="p-4 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block font-black text-xs text-emerald-900 dark:text-emerald-300 uppercase">
-                        Características do Empreendimento / Condomínio
-                      </label>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Áreas comuns, lazer, segurança e facilidades do condomínio.
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        <label className="font-black text-xs text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">
+                          Áreas Comuns, Lazer & Condomínio
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Infraestrutura coletiva, portaria, piscinas, segurança e facilidades do condomínio.
                       </p>
                     </div>
                     <button
@@ -2227,46 +2330,89 @@ export const ImoveisManager: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Active tags badges */}
+                  {featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean).length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl border border-emerald-200/60 dark:border-emerald-900/60">
+                      <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">
+                        Ativas ({featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean).length}):
+                      </span>
+                      {featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean).map((tag, tIdx) => (
+                        <span key={tIdx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold shadow-xs">
+                          <span>✓ {tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFeatureTag(tag, featuresEmpreendimentoText, setFeaturesEmpreendimentoText)}
+                            className="hover:bg-emerald-700 rounded-full p-0.5 transition-colors"
+                            title={`Remover ${tag}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setFeaturesEmpreendimentoText('')}
+                        className="text-[10px] text-rose-600 dark:text-rose-400 font-bold hover:underline ml-auto"
+                      >
+                        Limpar todas
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Predefined Buttons */}
                   {caracteristicaEmpreendimentoOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {caracteristicaEmpreendimentoOptions.map(opt => {
-                        const isSelected = featuresEmpreendimentoText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        const isSelected = isFeatureSelected(opt.label, featuresEmpreendimentoText);
                         return (
                           <button
                             key={opt.id}
                             type="button"
                             onClick={() => toggleFeatureTag(opt.label, featuresEmpreendimentoText, setFeaturesEmpreendimentoText)}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
                               isSelected
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400'
+                                ? 'bg-emerald-600 text-white border-emerald-600 ring-2 ring-emerald-400/40 shadow-sm'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30'
                             }`}
                           >
-                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                            {isSelected ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            )}
+                            <span>{opt.label}</span>
                           </button>
                         );
                       })}
                     </div>
                   )}
 
-                  <input
-                    type="text"
-                    value={featuresEmpreendimentoText}
-                    onChange={e => setFeaturesEmpreendimentoText(e.target.value)}
-                    placeholder="Piscina adulto/infantil, Playground, Pista de caminhada, Portaria 24h..."
-                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
-                  />
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Edição manual / Condomínio (separado por vírgula):
+                    </label>
+                    <input
+                      type="text"
+                      value={featuresEmpreendimentoText}
+                      onChange={e => setFeaturesEmpreendimentoText(e.target.value)}
+                      placeholder="Portaria 24h & Segurança, Piscina Adulto & Infantil, Salão de Festas..."
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                    />
+                  </div>
                 </div>
 
-                {/* Características da Região / Entorno */}
-                <div className="p-4 bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-900/50 rounded-2xl space-y-2.5">
+                {/* 3. Características da Região / Entorno */}
+                <div className="p-4 bg-sky-50/40 dark:bg-sky-950/20 border border-sky-200/80 dark:border-sky-900/50 rounded-2xl space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block font-black text-xs text-sky-900 dark:text-sky-300 uppercase">
-                        Características da Região & Entorno
-                      </label>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        Proximidades de comércio, serviços, saúde, transporte e escolas.
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                        <label className="font-black text-xs text-sky-900 dark:text-sky-300 uppercase tracking-wide">
+                          Características da Região & Proximidades
+                        </label>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Proximidades de comércio, escolas, supermercados, hospitais e transporte.
                       </p>
                     </div>
                     <button
@@ -2279,35 +2425,75 @@ export const ImoveisManager: React.FC = () => {
                     </button>
                   </div>
 
+                  {/* Active tags badges */}
+                  {featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean).length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 p-2 bg-sky-50/70 dark:bg-sky-950/40 rounded-xl border border-sky-200/60 dark:border-sky-900/60">
+                      <span className="text-[10px] font-black uppercase text-sky-700 dark:text-sky-300">
+                        Ativas ({featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean).length}):
+                      </span>
+                      {featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean).map((tag, tIdx) => (
+                        <span key={tIdx} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-sky-600 text-white text-[11px] font-bold shadow-xs">
+                          <span>✓ {tag}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeFeatureTag(tag, featuresRegiaoText, setFeaturesRegiaoText)}
+                            className="hover:bg-sky-700 rounded-full p-0.5 transition-colors"
+                            title={`Remover ${tag}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setFeaturesRegiaoText('')}
+                        className="text-[10px] text-rose-600 dark:text-rose-400 font-bold hover:underline ml-auto"
+                      >
+                        Limpar todas
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Predefined Buttons */}
                   {caracteristicaRegiaoOptions.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {caracteristicaRegiaoOptions.map(opt => {
-                        const isSelected = featuresRegiaoText.split(',').map(s => s.trim().toLowerCase()).includes(opt.label.toLowerCase());
+                        const isSelected = isFeatureSelected(opt.label, featuresRegiaoText);
                         return (
                           <button
                             key={opt.id}
                             type="button"
                             onClick={() => toggleFeatureTag(opt.label, featuresRegiaoText, setFeaturesRegiaoText)}
-                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all border ${
+                            className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all border flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
                               isSelected
-                                ? 'bg-sky-600 text-white border-sky-600 shadow-xs'
-                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400'
+                                ? 'bg-sky-600 text-white border-sky-600 ring-2 ring-sky-400/40 shadow-sm'
+                                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-sky-400 hover:bg-sky-50/50 dark:hover:bg-sky-950/30'
                             }`}
                           >
-                            {isSelected ? '✓ ' : '+ '}{opt.label}
+                            {isSelected ? (
+                              <CheckCircle className="w-3.5 h-3.5 text-white shrink-0" />
+                            ) : (
+                              <Plus className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            )}
+                            <span>{opt.label}</span>
                           </button>
                         );
                       })}
                     </div>
                   )}
 
-                  <input
-                    type="text"
-                    value={featuresRegiaoText}
-                    onChange={e => setFeaturesRegiaoText(e.target.value)}
-                    placeholder="Escola, Posto de Saúde, Supermercado, Academia, Shopping..."
-                    className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
-                  />
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                      Edição manual / Região (separado por vírgula):
+                    </label>
+                    <input
+                      type="text"
+                      value={featuresRegiaoText}
+                      onChange={e => setFeaturesRegiaoText(e.target.value)}
+                      placeholder="Próximo a Escolas e Colégios, Supermercados e Mercados..."
+                      className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium"
+                    />
+                  </div>
                 </div>
               </div>
 
