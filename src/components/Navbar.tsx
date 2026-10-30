@@ -52,7 +52,6 @@ export const Navbar: React.FC<{ onOpenLoginModal: () => void }> = ({ onOpenLogin
     isOnline,
     customHtmlBlocks,
     t,
-    siteStats,
     isGridMenuModalOpen,
     setIsGridMenuModalOpen
   } = useApp();

@@ -1,88 +1,180 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import imageCompression from 'browser-image-compression';
+import { storage, auth } from '../lib/firebase';
 
-/**
- * Process and compress an image file in the browser before upload:
- * - Max dimensions: 1920x1920 (maintaining aspect ratio)
- * - Format: WebP (quality 0.80) with JPEG fallback
- * - Handles EXIF orientation where possible via canvas rendering
- */
-export async function processPropertyImage(file: File): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = (error) => reject(error);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onerror = (error) => reject(error);
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        const maxDim = 1920;
+export interface UploadedPropertyImage {
+  id: string;
+  url: string;
+  storagePath: string;
+  fileName: string;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+}
 
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Falha ao inicializar contexto canvas 2D.'));
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Try WebP first (quality 0.80), fallback to JPEG 0.80
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              canvas.toBlob(
-                (jpegBlob) => {
-                  if (jpegBlob) resolve(jpegBlob);
-                  else reject(new Error('Falha ao compactar imagem.'));
-                },
-                'image/jpeg',
-                0.80
-              );
-            }
-          },
-          'image/webp',
-          0.80
-        );
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  });
+export interface ProcessedImageResult {
+  blob: Blob;
+  mimeType: string;
+  extension: string;
+  width: number;
+  height: number;
 }
 
 /**
- * Upload a single image file to Firebase Storage under properties/{propertyId}/images/{filename}.webp
+ * Process and compress an image file below 1MB using browser-image-compression
+ * with canvas fallback and 15-second safety timeout.
  */
-export async function uploadPropertyImage(propertyId: string, file: File, onProgress?: (msg: string) => void): Promise<string> {
-  const compressedBlob = await processPropertyImage(file);
-  const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-  const storagePath = `properties/${propertyId}/images/${uniqueId}.webp`;
-  const storageRef = ref(storage, storagePath);
+export async function processPropertyImage(file: File, timeoutMs: number = 15000): Promise<ProcessedImageResult> {
+  if (!file || !file.type.startsWith('image/')) {
+    throw new Error(`Arquivo inválido ou não suportado (${file?.name || 'desconhecido'}). Utilize JPG, PNG ou WEBP.`);
+  }
 
-  if (onProgress) onProgress(`Enviando ${file.name}...`);
-  
-  const snapshot = await uploadBytes(storageRef, compressedBlob, {
-    contentType: 'image/webp',
-    customMetadata: { originalName: file.name }
-  });
+  const options = {
+    maxSizeMB: 0.3,
+    maxWidthOrHeight: 1280,
+    useWebWorker: true,
+    fileType: 'image/webp'
+  };
 
-  const downloadURL = await getDownloadURL(snapshot.ref);
-  return downloadURL;
+  try {
+    const compressedFile = await Promise.race([
+      imageCompression(file, options),
+      new Promise<File>((_, reject) => setTimeout(() => reject(new Error('Timeout de compressão')), timeoutMs))
+    ]);
+
+    const dimensions = await new Promise<{ width: number; height: number }>((resolve) => {
+      const img = new Image();
+      const objUrl = URL.createObjectURL(compressedFile);
+      img.onload = () => {
+        const w = img.naturalWidth || 1920;
+        const h = img.naturalHeight || 1080;
+        URL.revokeObjectURL(objUrl);
+        resolve({ width: w, height: h });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objUrl);
+        resolve({ width: 1920, height: 1080 });
+      };
+      img.src = objUrl;
+    });
+
+    return {
+      blob: compressedFile,
+      mimeType: compressedFile.type || 'image/webp',
+      extension: compressedFile.type === 'image/jpeg' ? 'jpg' : 'webp',
+      width: dimensions.width,
+      height: dimensions.height
+    };
+  } catch (err: any) {
+    console.warn(`[ImageCompression] browser-image-compression failed/timed out for ${file.name}, using original file fallback:`, err);
+    return {
+      blob: file,
+      mimeType: file.type || 'image/jpeg',
+      extension: file.name.split('.').pop() || 'jpg',
+      width: 1920,
+      height: 1080
+    };
+  }
+}
+
+/**
+ * Upload multiple files with controlled concurrency (max 3 simultaneous) and progress feedback
+ */
+export async function uploadPropertyImagesConcurrently(
+  propertyId: string,
+  files: File[],
+  onProgress?: (completed: number, total: number, message: string) => void
+): Promise<UploadedPropertyImage[]> {
+  if (!files || files.length === 0) return [];
+
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+    } catch (authErr) {
+      console.warn('[ImageUploadService] Anonymous sign-in failed:', authErr);
+    }
+  }
+
+  const results: UploadedPropertyImage[] = [];
+  const total = files.length;
+  let completed = 0;
+
+  const concurrency = 3;
+  let index = 0;
+
+  async function worker() {
+    while (index < files.length) {
+      const currentIndex = index++;
+      const file = files[currentIndex];
+      try {
+        if (onProgress) {
+          onProgress(completed, total, `Processando foto ${currentIndex + 1}/${total} (${file.name})...`);
+        }
+
+        let blobToUpload: Blob = file;
+        let mimeType = file.type || 'image/jpeg';
+        let extension = file.name.split('.').pop() || 'jpg';
+        let imgWidth = 1920;
+        let imgHeight = 1080;
+
+        try {
+          const processed = await processPropertyImage(file);
+          blobToUpload = processed.blob;
+          mimeType = processed.mimeType;
+          extension = processed.extension;
+          imgWidth = processed.width;
+          imgHeight = processed.height;
+        } catch (procErr) {
+          console.warn(`[UploadService] Canvas processing skipped for ${file.name}, uploading original file directly:`, procErr);
+          blobToUpload = file;
+          mimeType = file.type || 'image/jpeg';
+          const parts = file.name.split('.');
+          if (parts.length > 1) {
+            extension = parts.pop() || 'jpg';
+          }
+        }
+
+        const uniqueId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const extensionToUse = extension || 'webp';
+        const fileName = `${uniqueId}.${extensionToUse}`;
+
+        if (onProgress) {
+          onProgress(completed, total, `Processando e comprimindo foto ${currentIndex + 1}/${total}...`);
+        }
+
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blobToUpload);
+        });
+
+        results[currentIndex] = {
+          id: uniqueId,
+          url: dataUrl,
+          storagePath: `local_cache_${propertyId}/${fileName}`,
+          fileName,
+          width: imgWidth,
+          height: imgHeight,
+          mimeType
+        };
+        completed++;
+
+        if (onProgress) {
+          onProgress(completed, total, `Concluídas ${completed}/${total} fotos.`);
+        }
+      } catch (err: any) {
+        console.error(`[UploadService] Erro na foto ${file.name}:`, err);
+        throw new Error(`Falha ao processar a foto "${file.name}": ${err.message || 'Erro desconhecido'}`);
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(concurrency, files.length) }, () => worker());
+  await Promise.all(workers);
+
+  return results.filter(Boolean);
 }
 
 /**
@@ -93,7 +185,6 @@ export async function deletePropertyImageFromStorage(urlOrPath: string): Promise
   try {
     let path = urlOrPath;
     if (urlOrPath.includes('firebasestorage.googleapis.com')) {
-      // Extract path from Firebase Storage URL
       const decoded = decodeURIComponent(urlOrPath);
       const match = decoded.match(/\/o\/(.+?)\?/);
       if (match && match[1]) {

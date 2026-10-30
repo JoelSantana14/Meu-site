@@ -1,6 +1,52 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /siteConfig/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /properties/{propertyId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /leads/{leadId} {
+      allow read, write: if true;
+    }
+    match /documents/{docId} {
+      allow read, write: if true;
+    }
+    match /visits/{visitId} {
+      allow read, write: if true;
+    }
+    match /commissions/{commId} {
+      allow read, write: if true;
+    }
+    match /chatMessages/{msgId} {
+      allow read, write: if true;
+    }
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+    match /crmTasks/{taskId} {
+      allow read, write: if true;
+    }
+    match /auditLogs/{logId} {
+      allow read, write: if true;
+    }
+    match /configurable_options/{optId} {
+      allow read, write: if true;
+    }
+    match /customHtmlBlocks/{blockId} {
+      allow read, write: if true;
+    }
     match /{document=**} {
       allow read, write: if true;
     }

@@ -28,9 +28,10 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
   initialIndex = 0,
   className = ''
 }) => {
-  const images = property.images && property.images.length > 0
-    ? property.images
-    : [FALLBACK_IMAGE];
+  const rawImages = property.images || [];
+  const images = rawImages.length > 0
+    ? rawImages.map(img => typeof img === 'string' ? img : img.url).filter(Boolean)
+    : [];
 
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [direction, setDirection] = useState<1 | -1>(1);
@@ -170,6 +171,19 @@ export const PropertyGallery: React.FC<PropertyGalleryProps> = ({
     })
   };
 
+  if (images.length === 0) {
+    return (
+      <div className={`space-y-3 select-none ${className}`}>
+        <div className="relative aspect-[16/9] sm:aspect-[16/10] md:aspect-[16/9] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center p-6 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-3">
+            <ImageIcon className="w-8 h-8 opacity-70" />
+          </div>
+          <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Nenhuma foto cadastrada</h4>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs">Este imóvel ainda não possui imagens na galeria ou as fotos foram removidas.</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`space-y-3 select-none ${className}`}>
       {/* Main Interactive Stage */}

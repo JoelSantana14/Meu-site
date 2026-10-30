@@ -131,6 +131,16 @@ export interface GeneratedDocument {
   meta?: Record<string, any>;
 }
 
+export interface PropertyImage {
+  id: string;
+  url: string;
+  storagePath?: string;
+  fileName?: string;
+  width?: number;
+  height?: number;
+  mimeType?: string;
+}
+
 export interface Property {
   id: string;
   code: string;
@@ -160,7 +170,7 @@ export interface Property {
   features: string[];
   featuresRegiao?: string[]; // Características da região/vizinhança (Escola, Hospital, Supermercado, etc.)
   featuresEmpreendimento?: string[]; // Características do condomínio/empreendimento
-  images: string[];
+  images: (PropertyImage | string)[];
   imageDescriptions?: Record<string, string>; // Maps image URL or ID/Index to description/caption
   tarja?: string; // Tarja de foto padrão ou personalizada (Ex: 'Destaque', 'Oportunidade', 'Lançamento', 'Exclusivo', etc.)
   tarjaCustomColor?: string; // Cor personalizada para a tarja
@@ -542,6 +552,20 @@ export interface SiteConfig {
   seoRobotsIndex?: boolean;
   seoStructuredDataEnabled?: boolean;
   leadNotificationEmail?: string;
+  showTestimonialsSection?: boolean;
+  testimonials?: Testimonial[];
+}
+
+export interface Testimonial {
+  id: string;
+  clientName: string;
+  clientRole?: string;
+  clientAvatar?: string;
+  comment: string;
+  rating: number; // 1 to 5
+  propertyTitle?: string;
+  date?: string;
+  active?: boolean;
 }
 
 export interface DataVersionRecord {

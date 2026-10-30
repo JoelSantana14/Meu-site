@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Property, User } from '../types';
 import { useApp } from '../context/AppContext';
 import { WatermarkOverlay } from './WatermarkOverlay';
+import { getPropertyImagesList, getPropertyImageUrl } from '../utils/propertyImageHelper';
 import { getPropertyTypeLabel } from '../utils/propertyHelpers';
 import {
   Sparkles,
@@ -143,11 +144,8 @@ export const SuperDestaquesCarousel: React.FC<SuperDestaquesCarouselProps> = ({
     setSelectedPhotoIndex(0);
   };
 
-  const propImages = Array.isArray(currentProperty.images) && currentProperty.images.length > 0
-    ? currentProperty.images
-    : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80'];
-
-  const currentImage = propImages[selectedPhotoIndex] || propImages[0];
+  const propImages = getPropertyImagesList(currentProperty);
+  const currentImage = propImages[selectedPhotoIndex] || propImages[0] || '';
 
   const addressText = typeof currentProperty.address === 'string'
     ? currentProperty.address
@@ -228,17 +226,23 @@ export const SuperDestaquesCarousel: React.FC<SuperDestaquesCarouselProps> = ({
         <div className="lg:col-span-6 relative h-64 sm:h-72 lg:h-[340px] bg-slate-900 overflow-hidden flex flex-col justify-between group">
           
           {/* Main Property Photo */}
-          <img
-            src={currentImage}
-            alt={currentProperty.title}
-            onError={(e) => {
-              const target = e.currentTarget;
-              if (!target.src.includes('unsplash.com')) {
-                target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80';
-              }
-            }}
-            className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
-          />
+          {currentImage ? (
+            <img
+              src={currentImage}
+              alt={currentProperty.title}
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.includes('unsplash.com')) {
+                  target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80';
+                }
+              }}
+              className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-slate-400 text-xs font-medium">
+              Sem foto cadastrada
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30" />
           <WatermarkOverlay siteConfig={siteConfig} />
 
@@ -293,17 +297,19 @@ export const SuperDestaquesCarousel: React.FC<SuperDestaquesCarouselProps> = ({
                         : 'border-white/30 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img
-                      src={imgUrl}
-                      alt={`Foto ${imgIdx + 1}`}
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (!target.src.includes('unsplash.com')) {
-                          target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&auto=format&fit=crop&q=80';
-                        }
-                      }}
-                      className="w-full h-full object-cover"
-                    />
+                    {imgUrl ? (
+                      <img
+                        src={imgUrl}
+                        alt={`Foto ${imgIdx + 1}`}
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('unsplash.com')) {
+                            target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&auto=format&fit=crop&q=80';
+                          }
+                        }}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
                   </button>
                 ))}
               </div>
@@ -421,7 +427,7 @@ export const SuperDestaquesCarousel: React.FC<SuperDestaquesCarouselProps> = ({
             }`}
           >
             <img
-              src={prop.images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&auto=format&fit=crop&q=80'}
+              src={getPropertyImageUrl(prop.images[0]) || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=300&auto=format&fit=crop&q=80'}
               alt={prop.title}
               className="w-12 h-12 rounded-xl object-cover shrink-0"
             />

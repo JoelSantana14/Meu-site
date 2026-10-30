@@ -512,7 +512,43 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   watermarkSize: 'medium',
   logoSize: 'lg',
   logoPosition: 'left',
-  leadNotificationEmail: 'joelsantanaimoveis@gmail.com'
+  leadNotificationEmail: 'joelsantanaimoveis@gmail.com',
+  showTestimonialsSection: true,
+  testimonials: [
+    {
+      id: 'test_1',
+      clientName: 'Carlos Eduardo Silva',
+      clientRole: 'Comprador de Casa em Condomínio',
+      clientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80',
+      comment: 'O atendimento do Joel Santana foi impecável do início ao fim. Encontramos a casa perfeita no condomínio fechado com toda a assessoria documental e negociação transparente. Recomendo demais!',
+      rating: 5,
+      propertyTitle: 'Casa Alphaville São José do Rio Preto',
+      date: '10/09/2026',
+      active: true
+    },
+    {
+      id: 'test_2',
+      clientName: 'Mariana Souza e Família',
+      clientRole: 'Proprietária e Vendedora',
+      clientAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=200&auto=format&fit=crop&q=80',
+      comment: 'Vendi meu apartamento em tempo recorde e pelo valor justo que esperávamos. A vitrine digital e a captação de leads do Joel trouxeram compradores qualificados na primeira semana.',
+      rating: 5,
+      propertyTitle: 'Cobertura Duplex Zona Sul',
+      date: '28/08/2026',
+      active: true
+    },
+    {
+      id: 'test_3',
+      clientName: 'Roberto Mendes da Silva',
+      clientRole: 'Investidor Imobiliário',
+      clientAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80',
+      comment: 'Profissional extremamente sério, pontual e com profundo conhecimento do mercado de São José do Rio Preto e região. Já realizei duas aquisições com a assessoria dele.',
+      rating: 5,
+      propertyTitle: 'Chácara de Lazer Recanto Verde',
+      date: '15/07/2026',
+      active: true
+    }
+  ]
 };
 
 export const INITIAL_CRM_TASKS: CrmTask[] = [

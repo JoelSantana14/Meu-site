@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { CustomHtmlBlock, User, UserRole } from '../types';
+import { CustomHtmlBlock, User, UserRole, Testimonial } from '../types';
 import {
   Settings,
   Palette,
@@ -125,7 +125,7 @@ export const ConfiguradorHtmlTema: React.FC = () => {
   }
 
   // Active Tab in Config Panel: 'tema' | 'lancamento' | 'legal' | 'equipe' | 'perfil' | 'notificacoes' | 'html' | 'seo'
-  const [activeSubTab, setActiveSubTab] = useState<'tema' | 'lancamento' | 'legal' | 'equipe' | 'perfil' | 'notificacoes' | 'html' | 'seo' | 'seguranca'>('tema');
+  const [activeSubTab, setActiveSubTab] = useState<'tema' | 'lancamento' | 'legal' | 'equipe' | 'perfil' | 'notificacoes' | 'html' | 'seo' | 'seguranca' | 'depoimentos'>('tema');
 
   // View Mode: Cards (Grade) vs Lista (Saved locally)
   const [configViewMode, setConfigViewMode] = useState<'grid' | 'list'>(() => {
@@ -254,6 +254,59 @@ export const ConfiguradorHtmlTema: React.FC = () => {
   const [partnerSite3Name, setPartnerSite3Name] = useState<string>(siteConfig.partnerSite3Name || '');
   const [partnerSite3Url, setPartnerSite3Url] = useState<string>(siteConfig.partnerSite3Url || '');
   const [partnerSite3Desc, setPartnerSite3Desc] = useState<string>(siteConfig.partnerSite3Desc || '');
+
+  // Testimonials State
+  const [showTestimonialsSection, setShowTestimonialsSection] = useState<boolean>(siteConfig.showTestimonialsSection !== false);
+  const [testimonialsList, setTestimonialsList] = useState<Testimonial[]>(siteConfig.testimonials || []);
+  const [newTestClientName, setNewTestClientName] = useState('');
+  const [newTestClientRole, setNewTestClientRole] = useState('');
+  const [newTestClientAvatar, setNewTestClientAvatar] = useState('');
+  const [newTestComment, setNewTestComment] = useState('');
+  const [newTestRating, setNewTestRating] = useState<number>(5);
+  const [newTestPropertyTitle, setNewTestPropertyTitle] = useState('');
+
+  const handleAddTestimonial = () => {
+    if (!newTestClientName || !newTestComment) {
+      showErrorNotification('Informe o nome do cliente e o comentário do depoimento.');
+      return;
+    }
+    const newTest: Testimonial = {
+      id: `test_${Date.now()}`,
+      clientName: newTestClientName,
+      clientRole: newTestClientRole || 'Cliente Satisfeito',
+      clientAvatar: newTestClientAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80',
+      comment: newTestComment,
+      rating: newTestRating,
+      propertyTitle: newTestPropertyTitle,
+      date: new Date().toLocaleDateString('pt-BR'),
+      active: true
+    };
+    const updated = [...testimonialsList, newTest];
+    setTestimonialsList(updated);
+    setNewTestClientName('');
+    setNewTestClientRole('');
+    setNewTestClientAvatar('');
+    setNewTestComment('');
+    setNewTestPropertyTitle('');
+    setNewTestRating(5);
+    updateSiteConfig({ testimonials: updated });
+    showSuccessNotification('✓ Depoimento adicionado com sucesso!');
+  };
+
+  const handleToggleTestimonial = (id: string) => {
+    const updated = testimonialsList.map(t => t.id === id ? { ...t, active: !t.active } : t);
+    setTestimonialsList(updated);
+    updateSiteConfig({ testimonials: updated });
+    showSuccessNotification('Status do depoimento atualizado!');
+  };
+
+  const handleDeleteTestimonial = (id: string) => {
+    if (!window.confirm('Deseja realmente remover este depoimento?')) return;
+    const updated = testimonialsList.filter(t => t.id !== id);
+    setTestimonialsList(updated);
+    updateSiteConfig({ testimonials: updated });
+    showSuccessNotification('Depoimento removido com sucesso!');
+  };
 
   // Watermark State
   const [enableWatermark, setEnableWatermark] = useState<boolean>(siteConfig.enableWatermark || false);
@@ -787,7 +840,9 @@ export const ConfiguradorHtmlTema: React.FC = () => {
         seoRegion,
         seoRobotsIndex,
         seoStructuredDataEnabled,
-        leadNotificationEmail
+        leadNotificationEmail,
+        showTestimonialsSection,
+        testimonials: testimonialsList
       });
 
       showSuccessNotification(customMsg || '✨ Todas as configurações foram salvas com sucesso no banco de dados e navegador!');
@@ -1453,6 +1508,18 @@ export const ConfiguradorHtmlTema: React.FC = () => {
         >
           <Search className="w-4 h-4 text-emerald-500" />
           <span>SEO & Google Ranking</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('depoimentos')}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
+            activeSubTab === 'depoimentos'
+              ? 'bg-white dark:bg-slate-800 text-amber-600 dark:text-amber-400 shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+          }`}
+        >
+          <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+          <span>Depoimentos de Clientes</span>
         </button>
 
         <button
@@ -4070,6 +4137,216 @@ export const ConfiguradorHtmlTema: React.FC = () => {
                 <span>{isSavingBlock ? 'Validando & Gravando...' : 'Salvar Bloco HTML & Validar'}</span>
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== TAB: DEPOIMENTOS DE CLIENTES ==================== */}
+      {activeSubTab === 'depoimentos' && (
+        <div className="space-y-8 animate-fade-in">
+          {/* Header */}
+          <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-inner">
+                <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">Depoimentos de Clientes</h2>
+                  <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[11px] font-black rounded-full uppercase tracking-wider">
+                    Vitrine Pública
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+                  Gerencie as avaliações e depoimentos de clientes satisfeitos exibidos na página principal (VitrinePortal), fortalecendo a credibilidade e confiança do corretor.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer bg-slate-50 dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Exibir Seção no Site</span>
+                <input
+                  type="checkbox"
+                  checked={showTestimonialsSection}
+                  onChange={(e) => setShowTestimonialsSection(e.target.checked)}
+                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                />
+              </label>
+
+              <button
+                type="button"
+                disabled={isSavingConfig}
+                onClick={() => handleSaveAllConfigurations('✨ Configurações de depoimentos salvas com sucesso!')}
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-xs uppercase tracking-wider shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+              >
+                {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                <span>Salvar Alterações</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Add New Testimonial Form */}
+          <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <Plus className="w-5 h-5 text-indigo-600" />
+              <span>Adicionar Novo Depoimento</span>
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Nome do Cliente *</label>
+                <input
+                  type="text"
+                  value={newTestClientName}
+                  onChange={(e) => setNewTestClientName(e.target.value)}
+                  placeholder="Ex: Carlos Eduardo Silva"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Cargo / Vínculo (Ex: Comprador)</label>
+                <input
+                  type="text"
+                  value={newTestClientRole}
+                  onChange={(e) => setNewTestClientRole(e.target.value)}
+                  placeholder="Ex: Comprador de Imóvel"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">URL da Foto do Cliente</label>
+                <input
+                  type="text"
+                  value={newTestClientAvatar}
+                  onChange={(e) => setNewTestClientAvatar(e.target.value)}
+                  placeholder="https://images.unsplash.com/... ou URL da foto"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Título do Imóvel / Negócio Relacionado</label>
+                <input
+                  type="text"
+                  value={newTestPropertyTitle}
+                  onChange={(e) => setNewTestPropertyTitle(e.target.value)}
+                  placeholder="Ex: Casa Alphaville Rio Preto"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Avaliação (Estrelas: 1 a 5)</label>
+                <select
+                  value={newTestRating}
+                  onChange={(e) => setNewTestRating(Number(e.target.value))}
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                >
+                  <option value={5}>⭐⭐⭐⭐⭐ (5 - Excelente)</option>
+                  <option value={4}>⭐⭐⭐⭐ (4 - Muito Bom)</option>
+                  <option value={3}>⭐⭐⭐ (3 - Bom)</option>
+                  <option value={2}>⭐⭐ (2 - Regular)</option>
+                  <option value={1}>⭐ (1 - Ruim)</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-2 lg:col-span-3">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Comentário / Depoimento *</label>
+                <textarea
+                  rows={3}
+                  value={newTestComment}
+                  onChange={(e) => setNewTestComment(e.target.value)}
+                  placeholder="Escreva a avaliação detalhada do cliente sobre o atendimento do corretor..."
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleAddTestimonial}
+                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Adicionar Depoimento</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Testimonials List */}
+          <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-md space-y-6">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white">
+              Depoimentos Cadastrados ({testimonialsList.length})
+            </h3>
+
+            {testimonialsList.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">
+                Nenhum depoimento cadastrado no momento. Adicione acima para exibir na vitrine.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {testimonialsList.map(t => (
+                  <div
+                    key={t.id}
+                    className="p-5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={t.clientAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&auto=format&fit=crop&q=80'}
+                        alt={t.clientName}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-indigo-500/30 shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-bold text-slate-900 dark:text-white text-sm truncate">{t.clientName}</h4>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            t.active !== false ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                          }`}>
+                            {t.active !== false ? 'Ativo' : 'Oculto'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">{t.clientRole}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${i < t.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600 dark:text-slate-300 italic">"{t.comment}"</p>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800 text-[11px]">
+                      <span className="text-slate-400">{t.propertyTitle || 'Imóvel Geral'} • {t.date}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTestimonial(t.id)}
+                          className="px-3 py-1 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-lg"
+                        >
+                          {t.active !== false ? 'Ocultar' : 'Exibir'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTestimonial(t.id)}
+                          className="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 dark:bg-red-950 dark:text-red-400 rounded-lg"
+                          title="Remover"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

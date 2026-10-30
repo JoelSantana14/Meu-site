@@ -422,14 +422,27 @@ export function cleanForFirestore<T>(obj: T): T {
  */
 export function ensureSafeFirestoreDocumentSize<T extends Record<string, any>>(obj: T, maxBytes = 950000): T {
   try {
-    const str = JSON.stringify(obj);
-    const size = new TextEncoder().encode(str).length;
+    let str = JSON.stringify(obj);
+    let size = new TextEncoder().encode(str).length;
     if (size <= maxBytes) {
       return obj;
     }
-    console.warn(`[DataSafetyEngine] Document exceeds safe threshold (${size} bytes > ${maxBytes} bytes).`);
-    return obj;
-  } catch {
+    console.warn(`[DataSafetyEngine] Document size (${size} bytes) exceeds limit (${maxBytes} bytes). Trimming images...`);
+    const cloned = JSON.parse(str);
+    if (cloned.images && Array.isArray(cloned.images)) {
+      while (cloned.images.length > 0) {
+        cloned.images.pop();
+        const newStr = JSON.stringify(cloned);
+        const newSize = new TextEncoder().encode(newStr).length;
+        if (newSize <= maxBytes) {
+          console.warn(`[DataSafetyEngine] Document successfully trimmed to ${newSize} bytes.`);
+          return cloned;
+        }
+      }
+    }
+    return cloned;
+  } catch (err) {
+    console.error('[DataSafetyEngine] Error in ensureSafeFirestoreDocumentSize:', err);
     return obj;
   }
 }

@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { uploadPropertyImage, deletePropertyImageFromStorage } from '../services/imageUploadService';
+import { uploadPropertyImagesConcurrently, deletePropertyImageFromStorage } from '../services/imageUploadService';
+import { auth } from '../lib/firebase';
 import {
   Property,
+  PropertyImage,
   HighlightLevel,
   PropertyStatus,
   PropertyType,
@@ -15,6 +17,7 @@ import {
   ConfigurableOption
 } from '../types';
 import { PROPERTY_TYPE_OPTIONS, getPropertyTypeLabel } from '../utils/propertyHelpers';
+import { getPropertyImageUrl } from '../utils/propertyImageHelper';
 import { fetchAddressByCep, formatCep, formatCurrencyBRL, parseCurrencyInput } from '../utils/cepHelper';
 import { DocumentosJuridicosModal } from './DocumentosJuridicosModal';
 import { ArchiveReasonModal } from './ArchiveReasonModal';
@@ -92,6 +95,7 @@ export const ImoveisManager: React.FC = () => {
   // Modal State for New / Edit Property
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPropId, setEditingPropId] = useState<string | null>(null);
+  const [activePropFormId, setActivePropFormId] = useState<string>('');
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
 
   // Legal Document Modal State
@@ -208,9 +212,9 @@ export const ImoveisManager: React.FC = () => {
   const [partnerNotes, setPartnerNotes] = useState('');
 
   // Gallery & Upload
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<(PropertyImage | string)[]>([]);
   const [imageDescriptions, setImageDescriptions] = useState<Record<string, string>>({});
-  const [photoToDelete, setPhotoToDelete] = useState<{ index: number; url: string } | null>(null);
+  const [photoToDelete, setPhotoToDelete] = useState<{ index: number; imgItem: PropertyImage | string } | null>(null);
   const [showClearAllPhotosConfirm, setShowClearAllPhotosConfirm] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -373,6 +377,8 @@ export const ImoveisManager: React.FC = () => {
 
   const handleOpenAddModal = () => {
     setEditingPropId(null);
+    const newId = `prop_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    setActivePropFormId(newId);
     setTitle('');
     setCode(`IMP-${Math.floor(1000 + Math.random() * 9000)}`);
     setDescription('');
@@ -512,16 +518,19 @@ export const ImoveisManager: React.FC = () => {
     }
 
     const filesToUpload = files.slice(0, availableSlots);
-    const currentPropId = editingPropId || `prop_${Date.now()}`;
+    let currentPropId = editingPropId || activePropFormId;
+    if (!currentPropId) {
+      currentPropId = `prop_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      setActivePropFormId(currentPropId);
+    }
     
     setIsProcessingFiles(true);
 
     try {
-      const uploadedUrls: string[] = [];
-      for (const file of filesToUpload) {
-        const url = await uploadPropertyImage(currentPropId, file);
-        uploadedUrls.push(url);
-      }
+      const uploadedUrls = await uploadPropertyImagesConcurrently(currentPropId, filesToUpload, (_completed, _total, msg) => {
+        // Optional progress callback handler
+        console.debug('[UploadProgress]', msg);
+      });
       setImages(prev => [...prev, ...uploadedUrls]);
       showToast('success', `${uploadedUrls.length} foto(s) enviada(s) com sucesso para o Firebase Storage!`);
     } catch (err: any) {
@@ -544,23 +553,25 @@ export const ImoveisManager: React.FC = () => {
   };
 
   const requestDeletePhoto = (index: number) => {
-    const url = images[index];
-    if (url === undefined) return;
-    setPhotoToDelete({ index, url });
+    const imgItem = images[index];
+    if (imgItem === undefined) return;
+    setPhotoToDelete({ index, imgItem });
   };
 
   const confirmDeletePhoto = () => {
     if (!photoToDelete) return;
-    const { index, url } = photoToDelete;
+    const { index, imgItem } = photoToDelete;
+    const url = getPropertyImageUrl(imgItem);
+    const storagePath = typeof imgItem === 'object' && imgItem?.storagePath ? imgItem.storagePath : url;
 
-    if (url && (url.includes('firebasestorage.googleapis.com') || url.includes('properties/'))) {
-      deletePropertyImageFromStorage(url).catch(err => console.warn('Erro ao remover do Storage:', err));
+    if (storagePath) {
+      deletePropertyImageFromStorage(storagePath).catch(err => console.warn('Erro ao remover do Storage:', err));
     }
 
     setImages(prev => prev.filter((_, i) => i !== index));
     setImageDescriptions(prev => {
       const next = { ...prev };
-      delete next[url];
+      if (url) delete next[url];
       delete next[String(index)];
       return next;
     });
@@ -692,7 +703,7 @@ export const ImoveisManager: React.FC = () => {
     const featArray = featuresText.split(',').map(s => s.trim()).filter(Boolean);
     const featRegiaoArray = featuresRegiaoText.split(',').map(s => s.trim()).filter(Boolean);
     const featEmpreendArray = featuresEmpreendimentoText.split(',').map(s => s.trim()).filter(Boolean);
-    const finalImages = images.length > 0 ? images : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200'];
+    const finalImages = images;
 
     const fiftyData: FiftyPartnerInfo | undefined = isFiftyEnabled ? {
       enabled: true,
@@ -806,7 +817,7 @@ export const ImoveisManager: React.FC = () => {
           tarja: tarja || undefined,
           tarjaCustomColor: tarjaCustomColor || undefined,
           fifty: fiftyData
-        });
+        }, activePropFormId || undefined);
 
         if (res && res.success === false) {
           setFormError(res.error || 'Erro ao gravar imóvel no banco de dados.');
@@ -1077,12 +1088,16 @@ export const ImoveisManager: React.FC = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-14 h-11 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0 border border-slate-200 dark:border-slate-700">
-                          <img
-                            src={prop.images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400'}
-                            alt={prop.title}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="w-14 h-11 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-900 shrink-0 border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+                          {prop.images && prop.images[0] && getPropertyImageUrl(prop.images[0]) ? (
+                            <img
+                              src={getPropertyImageUrl(prop.images[0])}
+                              alt={prop.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">Sem foto</span>
+                          )}
                         </div>
                         <div>
                           <span className="font-bold text-slate-900 dark:text-white block line-clamp-1">{prop.title}</span>
@@ -2025,15 +2040,9 @@ export const ImoveisManager: React.FC = () => {
                             className="relative aspect-[4/3] bg-slate-950 cursor-grab active:cursor-grabbing overflow-hidden"
                           >
                             <img
-                              src={img}
+                              src={getPropertyImageUrl(img)}
                               alt={`Foto ${idx + 1}`}
                               className="w-full h-full object-cover pointer-events-none"
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                if (!target.src.includes('unsplash.com')) {
-                                  target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80';
-                                }
-                              }}
                             />
 
                             {/* Top Header Overlay with Badges and Direct Delete Button */}

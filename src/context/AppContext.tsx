@@ -8,7 +8,8 @@ import {
   getDoc,
   deleteDoc
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
+import { db, auth } from '../lib/firebase';
 import {
   requestPushPermission,
   triggerNativeNotification,
@@ -18,6 +19,7 @@ import {
 import {
   User,
   Property,
+  PropertyImage,
   Lead,
   VisitAppointment,
   Commission,
@@ -33,9 +35,7 @@ import {
   SystemBackupSnapshot,
   DataVersionRecord,
   ConfigurableFieldCategory,
-  ConfigurableOption,
-  SiteAnalyticsStats,
-  DailyVisitStat
+  ConfigurableOption
 } from '../types';
 
 import {
@@ -123,7 +123,7 @@ interface AppContextType {
   acceptInvitation: (inviteToken: string, newPassword: string) => { success: boolean; message: string };
   
   // Property Actions
-  addProperty: (prop: Omit<Property, 'id' | 'createdAt'>) => Promise<{ success: boolean; id?: string; error?: string }>;
+  addProperty: (prop: Omit<Property, 'id' | 'createdAt'>, customId?: string) => Promise<{ success: boolean; id?: string; error?: string }>;
   updateProperty: (prop: Property) => Promise<{ success: boolean; error?: string }>;
   deleteProperty: (id: string) => Promise<{ success: boolean; message?: string }>;
   archiveProperty: (id: string, reason: string) => Promise<{ success: boolean; message?: string }>;
@@ -175,10 +175,6 @@ interface AppContextType {
   updateSiteConfig: (newConfig: Partial<SiteConfig>) => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: Language) => void;
-
-  // Visitor Analytics & Counter (Admin Only)
-  siteStats: SiteAnalyticsStats | null;
-  recordSitePageView: () => Promise<void>;
 
   // Configurable Dynamic Fields & Options
   addConfigurableOption: (category: ConfigurableFieldCategory, label: string) => Promise<{ success: boolean; option?: ConfigurableOption; error?: string }>;
@@ -401,96 +397,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_CONFIGURABLE_OPTIONS;
   });
 
-  // Visitor Counter & Analytics State (Admin Exclusive)
-  const INITIAL_SITE_STATS: SiteAnalyticsStats = {
-    id: 'site_stats',
-    totalVisits: 1482,
-    uniqueVisitors: 894,
-    todayVisits: 38,
-    todayUniques: 27,
-    todayDate: new Date().toISOString().split('T')[0],
-    weeklyVisits: 285,
-    monthlyVisits: 1190,
-    lastVisitedAt: new Date().toISOString(),
-    history: [
-      { date: '2026-06-14', visits: 42, uniques: 31 },
-      { date: '2026-06-15', visits: 55, uniques: 39 },
-      { date: '2026-06-16', visits: 48, uniques: 33 },
-      { date: '2026-06-17', visits: 61, uniques: 45 },
-      { date: '2026-06-18', visits: 52, uniques: 38 },
-      { date: '2026-06-19', visits: 38, uniques: 27 }
-    ]
-  };
-
-  const [siteStats, setSiteStats] = useState<SiteAnalyticsStats>(() => {
-    try {
-      const saved = localStorage.getItem('imobipro_site_stats');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error(e);
-    }
-    return INITIAL_SITE_STATS;
-  });
-
-  // Record public site page view & visitor counter
-  const recordSitePageView = async () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const sessionKey = `imobipro_visit_session_${todayStr}`;
-    const isNewUniqueSession = typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(sessionKey);
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(sessionKey, '1');
-    }
-
-    setSiteStats(prev => {
-      const current = prev || INITIAL_SITE_STATS;
-      const isSameDay = current.todayDate === todayStr;
-      const newTodayVisits = isSameDay ? (current.todayVisits || 0) + 1 : 1;
-      const newTodayUniques = isSameDay ? ((current.todayUniques || 0) + (isNewUniqueSession ? 1 : 0)) : 1;
-      const newTotalVisits = (current.totalVisits || 0) + 1;
-      const newUniqueVisitors = (current.uniqueVisitors || 0) + (isNewUniqueSession ? 1 : 0);
-      const newWeeklyVisits = (current.weeklyVisits || 0) + 1;
-      const newMonthlyVisits = (current.monthlyVisits || 0) + 1;
-
-      let history = Array.isArray(current.history) ? [...current.history] : [];
-      const historyIdx = history.findIndex(h => h.date === todayStr);
-      if (historyIdx >= 0) {
-        history[historyIdx] = {
-          date: todayStr,
-          visits: history[historyIdx].visits + 1,
-          uniques: history[historyIdx].uniques + (isNewUniqueSession ? 1 : 0)
-        };
-      } else {
-        history.push({
-          date: todayStr,
-          visits: 1,
-          uniques: 1
-        });
-        if (history.length > 30) history = history.slice(-30);
-      }
-
-      const updated: SiteAnalyticsStats = {
-        id: 'site_stats',
-        totalVisits: newTotalVisits,
-        uniqueVisitors: newUniqueVisitors,
-        todayVisits: newTodayVisits,
-        todayUniques: newTodayUniques,
-        todayDate: todayStr,
-        weeklyVisits: newWeeklyVisits,
-        monthlyVisits: newMonthlyVisits,
-        lastVisitedAt: new Date().toISOString(),
-        history
-      };
-
-      try {
-        localStorage.setItem('imobipro_site_stats', JSON.stringify(updated));
-      } catch {}
-      idbPut('siteStats', updated).catch(() => {});
-      setDoc(doc(db, 'analytics', 'site_stats'), cleanForFirestore(updated), { merge: true }).catch(() => {});
-
-      return updated;
-    });
-  };
-
   // FCM Push Notifications State
   const [fcmPermissionStatus, setFcmPermissionStatus] = useState<'default' | 'granted' | 'denied' | 'unsupported'>(() => {
     if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -519,6 +425,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubscribeFcm();
     };
   }, []);
+
+  // Firebase Auth State Synchronization
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser && firebaseUser.email) {
+        const matched = users.find(u => u.email && u.email.toLowerCase() === firebaseUser.email?.toLowerCase());
+        if (matched && !currentUser) {
+          setCurrentUser(matched);
+        }
+      }
+    });
+    return () => unsubscribeAuth();
+  }, [users, currentUser]);
 
   const enablePushNotifications = async () => {
     const res = await requestPushPermission(currentUser?.id);
@@ -665,34 +584,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             type: data.type || 'casa',
             purpose: data.purpose || 'venda',
             price: typeof data.price === 'number' ? data.price : 0,
-            images: Array.isArray(data.images) && data.images.length > 0 ? data.images : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200'],
+            images: Array.isArray(data.images) ? data.images : [],
             features: Array.isArray(data.features) ? data.features : [],
             address: data.address || { street: '', neighborhood: '', city: 'São José do Rio Preto', state: 'SP', zip: '' }
           };
         }).filter((p): p is Property => p !== null && !(p as any)._deleted && !tombstones.has(p.id));
         
-        // Merge with locally stored IndexedDB properties so new/pending properties and custom user photos never vanish
+        // Merge with locally stored IndexedDB properties: Firestore is source of truth for remote properties
         idbGetAll<Property>('properties').then(localProps => {
-          const localMap = new Map<string, Property>();
-          (localProps || []).forEach(lp => {
-            if (lp && lp.id) localMap.set(lp.id, lp);
-          });
-
-          // Enrich remote items with local user-uploaded photos if remote had fewer photos or fallback
-          const enrichedRemote = remoteList.map(r => {
-            const local = localMap.get(r.id);
-            if (local && Array.isArray(local.images) && local.images.length > 0) {
-              const remoteHasGeneric = !r.images || r.images.length === 0 || (r.images.length === 1 && r.images[0] === '/images/house_with_pool_1789524615804.jpg');
-              if (remoteHasGeneric || local.images.length > (r.images?.length || 0)) {
-                return {
-                  ...r,
-                  images: local.images,
-                  imageDescriptions: local.imageDescriptions || r.imageDescriptions
-                };
-              }
-            }
-            return r;
-          });
+          const enrichedRemote = remoteList;
 
           const pendingLocal = (localProps || []).filter(p => 
             p && 
@@ -1016,31 +916,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     });
 
-    // 14. Visitor Analytics & Counter
-    const unsubSiteStats = onSnapshot(doc(db, 'analytics', 'site_stats'), (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.data() as SiteAnalyticsStats;
-        if (data) {
-          setSiteStats(data);
-          idbPut('siteStats', data).catch(() => {});
-          try {
-            localStorage.setItem('imobipro_site_stats', JSON.stringify(data));
-          } catch {}
-        }
-      } else {
-        idbGet<SiteAnalyticsStats>('siteStats', 'site_stats').then(local => {
-          const stats = local || INITIAL_SITE_STATS;
-          setSiteStats(stats);
-          setDoc(doc(db, 'analytics', 'site_stats'), cleanForFirestore(stats)).catch(() => {});
-        });
-      }
-    }, (err) => {
-      console.warn('Firestore siteStats error:', err);
-      idbGet<SiteAnalyticsStats>('siteStats', 'site_stats').then(local => {
-        if (local) setSiteStats(local);
-      });
-    });
-
     return () => {
       unsubUsers();
       unsubProps();
@@ -1055,7 +930,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubDocs();
       unsubAudit();
       unsubOptions();
-      unsubSiteStats();
     };
   }, []);
 
@@ -1218,10 +1092,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFailedLoginAttempts(0);
     setLoginLockoutUntil(0);
     setCurrentUser(found);
+
+    // Authenticate with Firebase Auth to satisfy firestore.rules (request.auth != null)
+    signInWithEmailAndPassword(auth, cleanEmail, cleanPass).catch(async (err) => {
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+        try {
+          await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        } catch (createErr) {
+          console.warn('[FirebaseAuth] Could not auto-create Firebase Auth user:', createErr);
+        }
+      } else {
+        console.warn('[FirebaseAuth] Sign-in warning:', err);
+      }
+    });
+
     return { success: true };
   };
 
   const logout = () => {
+    signOut(auth).catch(() => {});
     setCurrentUser(null);
   };
 
@@ -1358,8 +1247,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Property CRUD with Robust Durability & Versioning
-  const addProperty = async (propData: Omit<Property, 'id' | 'createdAt'>): Promise<{ success: boolean; id?: string; error?: string }> => {
-    const id = `prop_${Date.now()}`;
+  const addProperty = async (propData: Omit<Property, 'id' | 'createdAt'>, customId?: string): Promise<{ success: boolean; id?: string; error?: string }> => {
+    // 1. Verify Firebase Authentication session
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Saving property without active Firebase Auth user.');
+    }
+
+    const id = customId || `prop_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newProp: Property = {
       ...propData,
       id,
@@ -1372,34 +1267,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: val.error };
     }
 
-    setLastSaveStatus({ status: 'saving', message: 'Salvando imóvel com persistência...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+    setLastSaveStatus({ status: 'saving', message: 'Salvando imóvel na nuvem (Firestore)...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
 
-    // 1. Optimistic memory, local cache, and local IndexedDB
-    setProperties(prev => {
-      const updated = [newProp, ...prev];
-      try {
-        localStorage.setItem('imobipro_properties_cache', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-    await idbPut('properties', newProp);
-    await recordDataVersion('properties', id, null, newProp, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Cadastro do imóvel ${newProp.title}`);
-
-    // 2. Cloud Firestore with safe cleaning and document size limit protection
     const cleanProp = ensureSafeFirestoreDocumentSize(cleanForFirestore(newProp));
     try {
+      // 2. Await Firestore Promise first (Cloud as source of truth)
       await setDoc(doc(db, 'properties', id), cleanProp, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Imóvel salvo com sucesso na nuvem e redundância local', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+
+      // 3. Update local state, cache, and DB after cloud confirmation
+      setProperties(prev => {
+        const updated = [newProp, ...prev];
+        try {
+          localStorage.setItem('imobipro_properties_cache', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      await idbPut('properties', newProp);
+      await recordDataVersion('properties', id, null, newProp, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Cadastro do imóvel ${newProp.title}`);
+
+      setLastSaveStatus({ status: 'saved', message: 'Imóvel salvo com sucesso na nuvem e verificado!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
       return { success: true, id };
     } catch (err: any) {
-      console.warn('[DataSafety] Firestore offline ou erro de rede, salvo localmente com segurança:', err);
+      console.warn('[DataSafety] Firestore offline ou erro de rede, salvo na fila offline:', err);
       await queueOfflineSync('set', 'properties', id, cleanProp);
-      setLastSaveStatus({ status: 'saved', message: 'Salvo com segurança localmente (sincronização automática na fila)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+
+      setProperties(prev => {
+        const updated = [newProp, ...prev];
+        try {
+          localStorage.setItem('imobipro_properties_cache', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      await idbPut('properties', newProp);
+
+      setLastSaveStatus({ status: 'saved', message: 'Salvo com segurança localmente (sincronização na fila)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
       return { success: true, id };
     }
   };
 
   const updateProperty = async (updated: Property): Promise<{ success: boolean; error?: string }> => {
+    // 1. Verify Firebase Authentication session
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Updating property without active Firebase Auth user.');
+    }
+
     if (!acquireLock(updated.id)) {
       console.warn('[DataSafety] Bloqueado clique duplo ou gravação concorrente em andamento para:', updated.id);
       return { success: false, error: 'Gravação em andamento. Aguarde...' };
@@ -1412,27 +1324,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, error: val.error };
     }
 
-    setLastSaveStatus({ status: 'saving', message: 'Atualizando imóvel...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+    setLastSaveStatus({ status: 'saving', message: 'Atualizando imóvel na nuvem (Firestore)...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     const prevProp = properties.find(p => p.id === updated.id);
-
-    setProperties(prev => {
-      const list = prev.map(p => p.id === updated.id ? updated : p);
-      try {
-        localStorage.setItem('imobipro_properties_cache', JSON.stringify(list));
-      } catch {}
-      return list;
-    });
-    await idbPut('properties', updated);
-    await recordDataVersion('properties', updated.id, prevProp, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Atualização do imóvel ${updated.title}`);
-
     const cleanProp = ensureSafeFirestoreDocumentSize(cleanForFirestore(updated));
+
     try {
+      // 2. Await Firestore Promise first
       await setDoc(doc(db, 'properties', updated.id), cleanProp, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Imóvel atualizado com sucesso!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+
+      // 3. Update local state after cloud confirmation
+      setProperties(prev => {
+        const list = prev.map(p => p.id === updated.id ? updated : p);
+        try {
+          localStorage.setItem('imobipro_properties_cache', JSON.stringify(list));
+        } catch {}
+        return list;
+      });
+      await idbPut('properties', updated);
+      await recordDataVersion('properties', updated.id, prevProp, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Atualização do imóvel ${updated.title}`);
+
+      setLastSaveStatus({ status: 'saved', message: 'Imóvel atualizado com sucesso na nuvem!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
       return { success: true };
     } catch (err: any) {
       console.warn('[DataSafety] Firestore offline, atualizado localmente:', err);
       await queueOfflineSync('set', 'properties', updated.id, cleanProp);
+
+      setProperties(prev => {
+        const list = prev.map(p => p.id === updated.id ? updated : p);
+        try {
+          localStorage.setItem('imobipro_properties_cache', JSON.stringify(list));
+        } catch {}
+        return list;
+      });
+      await idbPut('properties', updated);
+
       setLastSaveStatus({ status: 'saved', message: 'Atualizado com segurança local (fila de sincronização ativa)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
       return { success: true };
     } finally {
@@ -1598,6 +1523,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // CRM Leads with Robust Durability & Versioning
   const addLead = async (leadData: Omit<Lead, 'id' | 'createdAt' | 'updatedAt' | 'notes'>, initialNote?: string) => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Saving lead without active Firebase Auth user.');
+    }
+
     const nowStr = new Date().toISOString().split('T')[0];
     const newNotes = initialNote ? [
       {
@@ -1624,18 +1554,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    setLastSaveStatus({ status: 'saving', message: 'Salvando lead...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-    setLeads(prev => [newLead, ...prev]);
-    await idbPut('leads', newLead);
-    await recordDataVersion('leads', id, null, newLead, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Cadastro de lead: ${newLead.name}`);
-
+    setLastSaveStatus({ status: 'saving', message: 'Salvando lead na nuvem (Firestore)...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     const cleanLead = cleanForFirestore(newLead);
+
     try {
       await setDoc(doc(db, 'leads', id), cleanLead, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Lead salvo com sucesso na nuvem e localmente', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+      setLeads(prev => [newLead, ...prev]);
+      await idbPut('leads', newLead);
+      await recordDataVersion('leads', id, null, newLead, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Cadastro de lead: ${newLead.name}`);
+      setLastSaveStatus({ status: 'saved', message: 'Lead salvo com sucesso na nuvem!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     } catch (err) {
-      console.warn('[DataSafety] Firestore offline, lead salvo localmente:', err);
+      console.warn('[DataSafety] Firestore offline, lead salvo na fila offline:', err);
       await queueOfflineSync('set', 'leads', id, cleanLead);
+      setLeads(prev => [newLead, ...prev]);
+      await idbPut('leads', newLead);
       setLastSaveStatus({ status: 'saved', message: 'Lead salvo localmente com segurança', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     }
 
@@ -1701,6 +1633,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateLead = async (updated: Lead) => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Updating lead without active Firebase Auth user.');
+    }
     if (!acquireLock(updated.id)) {
       return;
     }
@@ -1711,20 +1647,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    setLastSaveStatus({ status: 'saving', message: 'Atualizando lead...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+    setLastSaveStatus({ status: 'saving', message: 'Atualizando lead na nuvem...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     const prevLead = leads.find(l => l.id === updated.id);
-
-    setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
-    await idbPut('leads', updated);
-    await recordDataVersion('leads', updated.id, prevLead, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Atualização de lead: ${updated.name}`);
-
     const cleanLead = cleanForFirestore(updated);
+
     try {
       await setDoc(doc(db, 'leads', updated.id), cleanLead, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Lead atualizado com sucesso!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+      setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+      await idbPut('leads', updated);
+      await recordDataVersion('leads', updated.id, prevLead, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Atualização de lead: ${updated.name}`);
+      setLastSaveStatus({ status: 'saved', message: 'Lead atualizado com sucesso na nuvem!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     } catch (err) {
       console.warn('[DataSafety] Firestore offline, lead atualizado localmente:', err);
       await queueOfflineSync('set', 'leads', updated.id, cleanLead);
+      setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
+      await idbPut('leads', updated);
       setLastSaveStatus({ status: 'saved', message: 'Lead preservado com segurança local', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     } finally {
       releaseLock(updated.id);
@@ -2028,36 +1965,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Legal Documents & Audit Logs with Robust Durability
   const saveDocument = async (docItem: GeneratedDocument) => {
-    setLastSaveStatus({ status: 'saving', message: 'Salvando documento jurídico...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+    // 1. Verify Firebase Authentication session
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Saving document without active Firebase Auth user.');
+    }
 
+    setLastSaveStatus({ status: 'saving', message: 'Salvando documento jurídico na nuvem (Firestore)...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     const prevDoc = documents.find(d => d.id === docItem.id);
-    setDocuments(prev => {
-      const existingIdx = prev.findIndex(d => d.id === docItem.id);
-      let updatedList: GeneratedDocument[];
-      if (existingIdx >= 0) {
-        updatedList = [...prev];
-        updatedList[existingIdx] = docItem;
-      } else {
-        updatedList = [docItem, ...prev];
-      }
-      try {
-        localStorage.setItem('imobipro_documents', JSON.stringify(updatedList));
-      } catch (e) {
-        console.error(e);
-      }
-      return updatedList;
-    });
-
-    await idbPut('documents', docItem);
-    await recordDataVersion('documents', docItem.id, prevDoc, docItem, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Documento "${docItem.title}"`);
-
     const cleanDoc = cleanForFirestore(docItem);
+
     try {
+      // 2. Await Firestore Promise first
       await setDoc(doc(db, 'documents', docItem.id), cleanDoc, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Documento salvo com sucesso na nuvem e localmente!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+
+      // 3. Update local state after cloud confirmation
+      setDocuments(prev => {
+        const existingIdx = prev.findIndex(d => d.id === docItem.id);
+        let updatedList: GeneratedDocument[];
+        if (existingIdx >= 0) {
+          updatedList = [...prev];
+          updatedList[existingIdx] = docItem;
+        } else {
+          updatedList = [docItem, ...prev];
+        }
+        try {
+          localStorage.setItem('imobipro_documents', JSON.stringify(updatedList));
+        } catch (e) {
+          console.error(e);
+        }
+        return updatedList;
+      });
+
+      await idbPut('documents', docItem);
+      await recordDataVersion('documents', docItem.id, prevDoc, docItem, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, `Documento "${docItem.title}"`);
+
+      setLastSaveStatus({ status: 'saved', message: 'Documento salvo com sucesso na nuvem (Firestore)!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     } catch (err) {
+      console.warn('[DataSafety] Firestore offline, documento salvo na fila offline:', err);
       await queueOfflineSync('set', 'documents', docItem.id, cleanDoc);
-      setLastSaveStatus({ status: 'saved', message: 'Documento preservado localmente com segurança', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+
+      setDocuments(prev => {
+        const existingIdx = prev.findIndex(d => d.id === docItem.id);
+        let updatedList: GeneratedDocument[];
+        if (existingIdx >= 0) {
+          updatedList = [...prev];
+          updatedList[existingIdx] = docItem;
+        } else {
+          updatedList = [docItem, ...prev];
+        }
+        try {
+          localStorage.setItem('imobipro_documents', JSON.stringify(updatedList));
+        } catch (e) {
+          console.error(e);
+        }
+        return updatedList;
+      });
+      await idbPut('documents', docItem);
+
+      setLastSaveStatus({ status: 'saved', message: 'Documento preservado com segurança local (sincronização na fila)', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     }
 
     // Also link to property if propertyId is provided
@@ -2375,6 +2341,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Config with Robust Durability & Versioning
   const updateSiteConfig = async (newCfg: Partial<SiteConfig>) => {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      console.warn('[DataSafety] Warning: Updating site config without active Firebase Auth user.');
+    }
+
     const updated = { ...siteConfig, ...newCfg };
     const val = validateRecordIntegrity('settings', updated);
     if (!val.valid) {
@@ -2382,23 +2353,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    setLastSaveStatus({ status: 'saving', message: 'Salvando configurações...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
-    setSiteConfig(updated);
-    try {
-      localStorage.setItem('imobipro_site_config', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-
-    await idbPut('settings', { id: 'siteConfig', ...updated });
-    await recordDataVersion('settings', 'siteConfig', siteConfig, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, 'Alteração de configurações gerais');
+    setLastSaveStatus({ status: 'saving', message: 'Salvando configurações na nuvem (Firestore)...', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+    const cleanConfig = cleanForFirestore(updated);
 
     try {
-      const cleanConfig = cleanForFirestore(updated);
       await setDoc(doc(db, 'settings', 'siteConfig'), cleanConfig, { merge: true });
-      setLastSaveStatus({ status: 'saved', message: 'Configurações salvas com sucesso na nuvem e localmente!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
+      setSiteConfig(updated);
+      try {
+        localStorage.setItem('imobipro_site_config', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      await idbPut('settings', { id: 'siteConfig', ...updated });
+      await recordDataVersion('settings', 'siteConfig', siteConfig, updated, currentUser ? { id: currentUser.id, name: currentUser.name } : undefined, 'Alteração de configurações gerais');
+      setLastSaveStatus({ status: 'saved', message: 'Configurações salvas com sucesso na nuvem!', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     } catch (err) {
+      console.warn('[DataSafety] Firestore offline, configurações salvas na fila offline:', err);
       await queueOfflineSync('set', 'settings', 'siteConfig', updated);
+      setSiteConfig(updated);
+      try {
+        localStorage.setItem('imobipro_site_config', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
+      }
+      await idbPut('settings', { id: 'siteConfig', ...updated });
       setLastSaveStatus({ status: 'saved', message: 'Configurações preservadas com segurança local', timestamp: new Date().toLocaleTimeString().slice(0, 5) });
     }
   };
@@ -2976,8 +2954,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSiteConfig,
         toggleDarkMode,
         setLanguage,
-        siteStats,
-        recordSitePageView,
         addConfigurableOption,
         updateConfigurableOption,
         deleteConfigurableOption,

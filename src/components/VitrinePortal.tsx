@@ -7,6 +7,8 @@ import { LgpdConsentModal } from './LgpdConsentModal';
 import { ExclusiveLaunchModal } from './ExclusiveLaunchModal';
 import { PropertyGallery } from './PropertyGallery';
 import { FooterLeadCapture } from './FooterLeadCapture';
+import { ClientTestimonialsSection } from './ClientTestimonialsSection';
+import { getPropertyImageUrl } from '../utils/propertyImageHelper';
 import { getPropertyTypeLabel } from '../utils/propertyHelpers';
 import { AnimatedBlobs } from './AnimatedBlobs';
 import { AnimatedCounter } from './AnimatedCounter';
@@ -116,15 +118,8 @@ export const VitrinePortal: React.FC = () => {
     setActiveTab,
     selectedPropertyDetail,
     setSelectedPropertyDetail,
-    siteStats,
-    recordSitePageView,
     t
   } = useApp();
-
-  // Track visitor on mount
-  useEffect(() => {
-    recordSitePageView();
-  }, []);
 
   // Search filter states
   const [purposeTab, setPurposeTab] = useState<PropertyPurpose | 'todos'>('venda');
@@ -577,36 +572,6 @@ export const VitrinePortal: React.FC = () => {
 
   return (
     <div className="space-y-12 pb-16">
-
-      {/* ==================== EXCLUSIVE ADMIN VISITOR COUNTER BANNER ==================== */}
-      {(currentUser?.role === 'admin' || currentUser?.isMasterAdmin) && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-          <div className="bg-slate-900/95 backdrop-blur-md text-white py-2.5 px-4 sm:px-5 rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-amber-500/40 text-xs">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="font-black text-amber-400 uppercase tracking-wider text-[10px] bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/30">
-                🔒 Painel Admin (Tráfego do Site)
-              </span>
-              <span className="font-medium text-slate-200">
-                👁️ <strong className="text-white font-bold">{siteStats?.totalVisits?.toLocaleString('pt-BR') || 0}</strong> visitas registradas (<span className="text-emerald-400 font-bold">+{siteStats?.todayVisits || 0} hoje</span> • {siteStats?.uniqueVisitors || 0} visitantes únicos)
-              </span>
-              <span className="hidden md:inline text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
-                Visível somente para Administradores
-              </span>
-            </div>
-            <button
-              onClick={() => setActiveTab('estatisticas')}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black rounded-xl text-[11px] transition-all flex items-center gap-1.5 shadow-md shrink-0 cursor-pointer"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span>Ver Gráficos & Estatísticas</span>
-            </button>
-          </div>
-        </div>
-      )}
       
       {/* ==================== HERO BANNER SECTION ==================== */}
       <section className="relative min-h-[380px] sm:min-h-[440px] flex items-center justify-center bg-gradient-to-b from-indigo-950 via-slate-900 to-slate-900 overflow-hidden py-16 px-4 sm:px-6 lg:px-8 w-full">
@@ -1026,18 +991,18 @@ export const VitrinePortal: React.FC = () => {
                   
                   {/* Image Container with Badges & Watermark */}
                   <div className="relative aspect-[16/10] overflow-hidden bg-slate-950">
-                    <img
-                      src={prop.images[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop&q=80'}
-                      alt={prop.title}
-                      loading="lazy"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (!target.src.includes('unsplash.com')) {
-                          target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&auto=format&fit=crop&q=80';
-                        }
-                      }}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
+                    {prop.images && prop.images.length > 0 && getPropertyImageUrl(prop.images[0]) ? (
+                      <img
+                        src={getPropertyImageUrl(prop.images[0])}
+                        alt={prop.title}
+                        loading="lazy"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center text-slate-400">
+                        <span className="text-xs font-medium">Sem foto</span>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/30 pointer-events-none" />
 
                     {/* Watermark Overlay */}
@@ -2080,6 +2045,11 @@ export const VitrinePortal: React.FC = () => {
           </section>
         );
       })()}
+
+      {/* ==================== CLIENT TESTIMONIALS SECTION ==================== */}
+      {siteConfig.showTestimonialsSection !== false && (
+        <ClientTestimonialsSection testimonials={siteConfig.testimonials} />
+      )}
 
       {/* ==================== FOOTER LEAD CAPTURE SECTION ==================== */}
       <FooterLeadCapture
