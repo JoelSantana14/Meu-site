@@ -143,17 +143,33 @@ export async function uploadPropertyImagesConcurrently(
           onProgress(completed, total, `Processando e comprimindo foto ${currentIndex + 1}/${total}...`);
         }
 
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blobToUpload);
-        });
+        let finalUrl = '';
+        let storagePath = `properties/${propertyId}/${fileName}`;
+
+        try {
+          if (onProgress) {
+            onProgress(completed, total, `Enviando foto ${currentIndex + 1}/${total} para o Firebase Storage...`);
+          }
+          const storageRef = ref(storage, storagePath);
+          const uploadSnapshot = await uploadBytes(storageRef, blobToUpload, {
+            contentType: mimeType
+          });
+          finalUrl = await getDownloadURL(uploadSnapshot.ref);
+        } catch (storageErr: any) {
+          console.warn('[UploadService] Firebase Storage upload fallback to compressed Base64:', storageErr);
+          finalUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blobToUpload);
+          });
+          storagePath = `local_cache_${propertyId}/${fileName}`;
+        }
 
         results[currentIndex] = {
           id: uniqueId,
-          url: dataUrl,
-          storagePath: `local_cache_${propertyId}/${fileName}`,
+          url: finalUrl,
+          storagePath,
           fileName,
           width: imgWidth,
           height: imgHeight,
