@@ -563,8 +563,9 @@ export function exportDocumentToPdfOrPrint(title: string, content: string, siteC
     return;
   }
 
-  const logoHtml = siteConfig.logoUrl
-    ? `<img src="${siteConfig.logoUrl}" alt="Logo" style="max-height: 55px; margin-bottom: 8px;" />`
+  const effectiveLogo = siteConfig.logoUrl || '/images/logo_joel_santana.svg';
+  const logoHtml = effectiveLogo
+    ? `<img src="${effectiveLogo}" alt="Logo" style="max-height: 55px; margin-bottom: 8px;" />`
     : `<h2 style="margin: 0; color: #1e1b4b; font-size: 20px; font-weight: 900;">${siteConfig.companyName}</h2>`;
 
   const html = `

@@ -141,32 +141,27 @@ export const Navbar: React.FC<{ onOpenLoginModal: () => void }> = ({ onOpenLogin
           
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3 cursor-pointer shrink-0" onClick={() => setActiveTab('portal')}>
-            {siteConfig.logoUrl ? (
-              <img
-                src={siteConfig.logoUrl}
-                alt={siteConfig.logoText || siteConfig.companyName || 'Logo'}
-                className={`w-auto object-contain rounded-lg transition-all ${
-                  siteConfig.logoSize === 'sm' ? 'h-8 sm:h-10 max-w-[180px]' :
-                  siteConfig.logoSize === 'md' ? 'h-10 sm:h-12 max-w-[240px]' :
-                  siteConfig.logoSize === 'xl' ? 'h-18 sm:h-20 max-w-[400px]' :
-                  siteConfig.logoSize === '2xl' ? 'h-24 sm:h-28 max-w-[480px]' :
-                  'h-14 sm:h-16 max-w-[320px]' /* 'lg' default - enlarged logo */
-                }`}
-              />
-            ) : (
-              <div
-                className={`rounded-xl flex items-center justify-center text-white font-bold shadow-md transition-transform hover:scale-105 shrink-0 ${
-                  siteConfig.logoSize === 'sm' ? 'w-8 h-8 text-base' :
-                  siteConfig.logoSize === 'md' ? 'w-10 h-10 text-lg' :
-                  siteConfig.logoSize === 'xl' ? 'w-16 h-16 text-2xl' :
-                  siteConfig.logoSize === '2xl' ? 'w-20 h-20 text-3xl' :
-                  'w-12 h-12 text-xl' /* 'lg' default */
-                }`}
-                style={{ backgroundColor: siteConfig.primaryColorHex }}
-              >
-                <Building2 className="w-6 h-6" />
-              </div>
-            )}
+            <img
+              src={siteConfig.logoUrl || '/images/logo_joel_santana.svg'}
+              alt={siteConfig.logoText || siteConfig.companyName || 'Joel Santana Corretor de Imóveis'}
+              loading="eager"
+              decoding="async"
+              // @ts-ignore
+              fetchPriority="high"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/images/logo_joel_santana.svg')) {
+                  target.src = '/images/logo_joel_santana.svg';
+                }
+              }}
+              className={`w-auto object-contain rounded-lg transition-all ${
+                siteConfig.logoSize === 'sm' ? 'h-8 sm:h-10 max-w-[180px]' :
+                siteConfig.logoSize === 'md' ? 'h-10 sm:h-12 max-w-[240px]' :
+                siteConfig.logoSize === 'xl' ? 'h-18 sm:h-20 max-w-[400px]' :
+                siteConfig.logoSize === '2xl' ? 'h-24 sm:h-28 max-w-[480px]' :
+                'h-14 sm:h-16 max-w-[320px]' /* 'lg' default - enlarged logo */
+              }`}
+            />
             <div className="min-w-0">
               <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 truncate">
                 {siteConfig.logoText || siteConfig.brokerName || siteConfig.companyName || 'Joel Santana'}

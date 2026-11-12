@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 140" width="100%" height="100%">
+  <defs>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-5%" y="-10%" width="110%" height="125%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Card Background -->
+  <rect x="4" y="4" width="452" height="132" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5" filter="url(#cardShadow)"/>
+
+  <!-- House Roofs Icon (Left Side) -->
+  <g transform="translate(18, 16)">
+    <!-- House 1: Orange Roof in Background with Chimney -->
+    <path d="M 52 24 L 88 52 L 82 52 L 82 72 L 52 72 Z" fill="#ffedd5"/>
+    <!-- Chimney -->
+    <rect x="74" y="24" width="8" height="18" fill="#ea580c" rx="1"/>
+    <!-- Orange Roof Pitch -->
+    <path d="M 52 20 L 94 54 L 88 58 L 52 30 L 48 33 L 42 28 Z" fill="url(#orangeGrad)"/>
+
+    <!-- House 2: Blue Main House in Foreground -->
+    <path d="M 12 50 L 42 22 L 72 50 L 68 50 L 68 76 L 16 76 L 16 50 Z" fill="#eff6ff"/>
+    <!-- Window with cross panes -->
+    <rect x="34" y="48" width="16" height="16" rx="2" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="42" y1="48" x2="42" y2="64" stroke="#2563eb" stroke-width="1.2"/>
+    <line x1="34" y1="56" x2="50" y2="56" stroke="#2563eb" stroke-width="1.2"/>
+
+    <!-- Blue Roof Pitch with Overhang -->
+    <path d="M 42 16 L 78 48 L 72 53 L 42 26 L 12 53 L 6 48 Z" fill="url(#blueGrad)"/>
+
+    <!-- Door / Ground Foundation Line -->
+    <rect x="4" y="74" width="88" height="4" rx="2" fill="#1e3a8a"/>
+
+    <!-- Subtle Brand Name below Icon -->
+    <text x="48" y="91" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="11" font-weight="900" fill="#ea580c" text-anchor="middle" letter-spacing="0.5">JOEL SANTANA</text>
+    <text x="48" y="103" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="7.5" font-weight="700" fill="#64748b" text-anchor="middle" letter-spacing="0.2">CRECI: 128.785-F</text>
+  </g>
+
+  <!-- Divider Line -->
+  <line x1="126" y1="22" x2="126" y2="118" stroke="#e2e8f0" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Brand Typography (Right Side) -->
+  <g transform="translate(142, 22)">
+    <!-- Main Title -->
+    <text x="0" y="32" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="21" font-weight="900" fill="#0f172a" letter-spacing="-0.5">
+      Joel Santana
+    </text>
+
+    <!-- Subtitle Category -->
+    <text x="0" y="58" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="15" font-weight="800" fill="#1e3a8a" letter-spacing="-0.2">
+      Corretor de Imóveis
+    </text>
+
+    <!-- Official CRECI Badge -->
+    <rect x="0" y="72" width="132" height="24" rx="12" fill="#ecfdf5" stroke="#a7f3d0" stroke-width="1"/>
+    <circle cx="12" cy="84" r="3.5" fill="#10b981"/>
+    <text x="22" y="88" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="11" font-weight="800" fill="#065f46" letter-spacing="0.5">
+      CRECI 128.785-F
+    </text>
+  </g>
+</svg>

@@ -131,9 +131,9 @@ export const INITIAL_PROPERTIES: Property[] = [
       'Playground'
     ],
     images: [
-      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200',
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200',
-      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200'
+      'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&auto=format&fit=crop&q=80',
+      'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=1200&auto=format&fit=crop&q=80'
     ],
     tarja: 'Aceita financiamento',
     tarjaCustomColor: '#01df00',
@@ -438,7 +438,7 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   email: 'joelsantanaimoveis@gmail.com',
   address: 'São José do Rio Preto - SP e Região Noroeste Paulista',
   logoText: 'Joel Santana Corretor de Imóveis',
-  logoUrl: '',
+  logoUrl: '/images/logo_joel_santana.svg',
   heroTitle: 'Conectando pessoas, realizando sonhos.',
   heroSubtitle: 'Casas em condomínio, apartamentos, terrenos e oportunidades comerciais com atendimento exclusivo pelo Corretor Joel Santana.',
   heroBannerImage: '/images/house_with_pool_1789524615804.jpg',
@@ -448,9 +448,9 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   showBrokerPhotoOnProperties: true,
   layoutPreset: 'clean_claro',
   brokerName: 'Joel Santana',
-  brokerCreci: 'CRECI 12345-F',
+  brokerCreci: 'CRECI 128.785-F',
   brokerCnae: '6821-8/01',
-  brokerCnai: 'CNAI 12345',
+  brokerCnai: 'CNAI 128785',
   brokerPhone: '(17) 99195-1473',
   brokerSecondaryPhone: '(17) 98123-4567',
   brokerWhatsapp: '5517991951473',

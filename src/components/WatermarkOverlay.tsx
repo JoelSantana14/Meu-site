@@ -8,7 +8,7 @@ interface WatermarkOverlayProps {
 export const WatermarkOverlay: React.FC<WatermarkOverlayProps> = ({ siteConfig }) => {
   if (!siteConfig?.enableWatermark) return null;
 
-  const watermarkSrc = siteConfig.watermarkUrl || siteConfig.logoUrl;
+  const watermarkSrc = siteConfig.watermarkUrl || siteConfig.logoUrl || '/images/logo_joel_santana.svg';
   const opacity = (siteConfig.watermarkOpacity ?? 35) / 100;
   const position = siteConfig.watermarkPosition || 'center';
   const size = siteConfig.watermarkSize || 'medium';

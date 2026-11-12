@@ -2,29 +2,33 @@
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
 
-firebase.initializeApp({
-  apiKey: "AIzaSyBcGKyZCbsspM4IHIV3q4xo919Uk16TRUk",
-  authDomain: "optimistic-shape-lc9s2.firebaseapp.com",
-  projectId: "optimistic-shape-lc9s2",
-  storageBucket: "optimistic-shape-lc9s2.firebasestorage.app",
-  messagingSenderId: "245250708106",
-  appId: "1:245250708106:web:09d74cd08c236b83c59373"
-});
+try {
+  firebase.initializeApp({
+    apiKey: "AIzaSyCyLGQ5727yrR6gT-PpvbKHk4lQoAZmbjs",
+    authDomain: "site-joelsantana-imoveis.firebaseapp.com",
+    projectId: "site-joelsantana-imoveis",
+    storageBucket: "site-joelsantana-imoveis.firebasestorage.app",
+    messagingSenderId: "45418617795",
+    appId: "1:45418617795:web:d4c3c5d517695e45297b76"
+  });
 
-const messaging = firebase.messaging();
+  const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background push notification:', payload);
-  const notificationTitle = payload.notification?.title || '⚡ Novo Alerta ImobiPro';
-  const notificationOptions = {
-    body: payload.notification?.body || 'Você possui um novo lead ou agendamento de visita.',
-    icon: '/assets/logo.png',
-    badge: '/assets/logo.png',
-    data: payload.data || {}
-  };
+  messaging.onBackgroundMessage((payload) => {
+    const notificationTitle = payload.notification?.title || '⚡ Novo Alerta ImobiPro';
+    const notificationOptions = {
+      body: payload.notification?.body || 'Você possui um novo lead ou agendamento de visita.',
+      icon: '/images/logo_joel_santana.svg',
+      badge: '/images/logo_joel_santana.svg',
+      data: payload.data || {}
+    };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
-});
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  });
+} catch (err) {
+  // Gracefully handle unconfigured FCM or offline mode in Edge/Safari
+  console.info('[FCM ServiceWorker] Offline/local fallback mode:', err);
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

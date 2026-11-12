@@ -420,16 +420,16 @@ export const ConfiguradorHtmlTema: React.FC = () => {
   };
 
   // Logo State
-  const [logoText, setLogoText] = useState(siteConfig.logoText || 'Joel Santana');
-  const [logoUrl, setLogoUrl] = useState(siteConfig.logoUrl || '');
+  const [logoText, setLogoText] = useState(siteConfig.logoText || 'Joel Santana Corretor de Imóveis');
+  const [logoUrl, setLogoUrl] = useState(siteConfig.logoUrl || '/images/logo_joel_santana.svg');
   const [logoSize, setLogoSize] = useState<'sm' | 'md' | 'lg' | 'xl' | '2xl'>(siteConfig.logoSize || 'lg');
   const [logoPosition, setLogoPosition] = useState<'left' | 'right'>(siteConfig.logoPosition || 'left');
 
   // Autonomous Broker State
   const [brokerName, setBrokerName] = useState(siteConfig.brokerName || 'Joel Santana');
-  const [brokerCreci, setBrokerCreci] = useState(siteConfig.brokerCreci || 'CRECI 12345-F');
-  const [brokerCnai, setBrokerCnai] = useState(siteConfig.brokerCnai || 'CNAI 12345');
-  const [brokerPhone, setBrokerPhone] = useState(siteConfig.brokerPhone || '(11) 98765-4321');
+  const [brokerCreci, setBrokerCreci] = useState(siteConfig.brokerCreci || 'CRECI 128.785-F');
+  const [brokerCnai, setBrokerCnai] = useState(siteConfig.brokerCnai || 'CNAI 128785');
+  const [brokerPhone, setBrokerPhone] = useState(siteConfig.brokerPhone || '(17) 99195-1473');
   const [brokerWhatsapp, setBrokerWhatsapp] = useState(siteConfig.brokerWhatsapp || '5517991951473');
   const [brokerEmail, setBrokerEmail] = useState(siteConfig.brokerEmail || 'joelsantanaimoveis@gmail.com');
   const [brokerAddress, setBrokerAddress] = useState(siteConfig.brokerAddress || 'São José do Rio Preto - SP');

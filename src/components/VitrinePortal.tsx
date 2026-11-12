@@ -582,8 +582,18 @@ export const VitrinePortal: React.FC = () => {
         {/* Background High-Res Architectural Image */}
         <div className="absolute inset-0 z-0">
           <img
-            src={siteConfig.heroBannerImage || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920&auto=format&fit=crop&q=80'}
-            alt="Imóveis de Alto Padrão"
+            src={siteConfig.heroBannerImage || '/images/house_with_pool_1789524615804.jpg'}
+            alt="Imóveis de Alto Padrão - Joel Santana Corretor"
+            loading="eager"
+            decoding="async"
+            // @ts-ignore
+            fetchPriority="high"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (!target.src.includes('house_with_pool')) {
+                target.src = '/images/house_with_pool_1789524615804.jpg';
+              }
+            }}
             className="w-full h-full object-cover object-center opacity-70 scale-100 transition-transform duration-1000"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-indigo-950/30" />
@@ -996,6 +1006,13 @@ export const VitrinePortal: React.FC = () => {
                         src={getPropertyImageUrl(prop.images[0])}
                         alt={prop.title}
                         loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (!target.src.includes('house_with_roof_card')) {
+                            target.src = '/images/house_with_roof_card_1789502902446.jpg';
+                          }
+                        }}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                       />
                     ) : (
@@ -2024,20 +2041,28 @@ export const VitrinePortal: React.FC = () => {
                 <img
                   src={displayAvatar}
                   alt={siteConfig.brokerName}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (!target.src.includes('joel_santana_avatar')) {
+                      target.src = '/images/joel_santana_avatar.jpg';
+                    }
+                  }}
                   className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border-2 border-indigo-400/50 shadow-xl shrink-0"
                 />
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <h2 className="text-xl sm:text-2xl font-black text-white">{siteConfig.brokerName}</h2>
+                    <h2 className="text-xl sm:text-2xl font-black text-white">{siteConfig.brokerName || 'Joel Santana'}</h2>
                     <span className="px-2.5 py-0.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-[10px] uppercase tracking-wider">
-                      {siteConfig.brokerCreci || 'CRECI 12345-F'}
+                      {siteConfig.brokerCreci || siteConfig.creciJuridico || 'CRECI 128.785-F'}
                     </span>
                   </div>
                   <p className="text-xs text-indigo-200 font-medium">
-                    {siteConfig.brokerRegion || 'Atendimento Personalizado em São Paulo e Região'}
+                    {siteConfig.brokerRegion || 'São José do Rio Preto - SP e Região Noroeste Paulista'}
                   </p>
                   <p className="text-xs text-slate-300 max-w-xl line-clamp-2">
-                    {siteConfig.brokerBio || 'Corretor autônomo com ampla experiência no mercado imobiliário. Atendimento direto e sem intermediários.'}
+                    {siteConfig.brokerBio || 'Joel Santana - Corretor de Imóveis especialista na compra, venda e locação de imóveis residenciais, condomínios fechados, apartamentos e terrenos em São José do Rio Preto e região.'}
                   </p>
                 </div>
               </div>

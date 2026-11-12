@@ -230,10 +230,14 @@ export const SuperDestaquesCarousel: React.FC<SuperDestaquesCarouselProps> = ({
             <img
               src={currentImage}
               alt={currentProperty.title}
+              loading="eager"
+              decoding="async"
+              // @ts-ignore
+              fetchPriority="high"
               onError={(e) => {
                 const target = e.currentTarget;
-                if (!target.src.includes('unsplash.com')) {
-                  target.src = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1200&auto=format&fit=crop&q=80';
+                if (!target.src.includes('house_with_roof_card')) {
+                  target.src = '/images/house_with_roof_card_1789502902446.jpg';
                 }
               }}
               className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"

@@ -380,7 +380,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const saved = localStorage.getItem('imobipro_site_config');
       if (saved) {
-        return { ...INITIAL_SITE_CONFIG, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (!parsed.logoUrl || parsed.logoUrl.trim() === '') {
+          parsed.logoUrl = '/images/logo_joel_santana.svg';
+        }
+        return { ...INITIAL_SITE_CONFIG, ...parsed };
       }
     } catch (e) {
       console.error(e);
@@ -507,6 +511,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [properties, leads, users, visits, commissions, chatMessages, customHtmlBlocks, documents, crmTasks, auditLogs, siteConfig]);
 
 
+  // Central diagnostic logger for Firestore listeners (prevents 10x duplicate console errors if DB is offline)
+  let hasReportedMissingDb = false;
+  const logFirestoreListenerNotice = (collectionName: string, err: any) => {
+    const msg = err?.message || String(err || '');
+    if (msg.includes("Database '(default)' not found") || msg.includes('not-found') || err?.code === 'not-found') {
+      if (!hasReportedMissingDb) {
+        hasReportedMissingDb = true;
+        console.info(
+          '[Firebase Firestore] Banco de dados Cloud Firestore não localizado no Firebase Console do projeto "site-joelsantana-imoveis". O ImobiPro está operando em modo de segurança local (IndexedDB) para garantir que nenhum imóvel ou dado seja perdido. Assim que ativado no Firebase Console, a sincronização em tempo real celular/PC funcionará automaticamente.'
+        );
+      }
+      return;
+    }
+    console.warn(`[Firestore ${collectionName}] Conexão:`, err);
+  };
+
   // Firestore Listeners & Auto Seed
   useEffect(() => {
     // 1. Users
@@ -545,7 +565,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         setUsers(list);
       }
-    }, (err) => console.error('Firestore users err:', err));
+    }, (err) => logFirestoreListenerNotice('users', err));
 
     // 2. Properties
     const unsubProps = onSnapshot(collection(db, 'properties'), (snapshot) => {
@@ -635,7 +655,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setIsPropertiesLoading(false);
     }, (err) => {
-      console.error('Firestore properties err:', err);
+      logFirestoreListenerNotice('properties', err);
       idbGetAll<Property>('properties').then(localProps => {
         const tombstones = getTombstoneSet('properties');
         const cleanLocal = (localProps || []).filter(p => p && !(p as any)._deleted && !tombstones.has(p.id));
@@ -662,7 +682,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         idbBulkPut('leads', list);
       }
     }, (err) => {
-      console.error('Firestore leads err:', err);
+      logFirestoreListenerNotice('leads', err);
       idbGetAll<Lead>('leads').then(local => {
         if (local && local.length > 0) setLeads(local);
       });
@@ -684,7 +704,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setVisits(list);
         idbBulkPut('visits', list);
       }
-    }, (err) => console.error('Firestore visits err:', err));
+    }, (err) => logFirestoreListenerNotice('visits', err));
 
     // 5. Commissions
     const unsubComm = onSnapshot(collection(db, 'commissions'), (snapshot) => {
@@ -702,7 +722,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setCommissions(list);
         idbBulkPut('commissions', list);
       }
-    }, (err) => console.error('Firestore commissions err:', err));
+    }, (err) => logFirestoreListenerNotice('commissions', err));
 
     // 6. Chat Messages
     const unsubChat = onSnapshot(collection(db, 'chatMessages'), (snapshot) => {
@@ -721,7 +741,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         list.sort((a, b) => a.id.localeCompare(b.id));
         setChatMessages(list);
       }
-    }, (err) => console.error('Firestore chat err:', err));
+    }, (err) => logFirestoreListenerNotice('chatMessages', err));
 
     // 7. Notifications
     const unsubNotif = onSnapshot(collection(db, 'notifications'), (snapshot) => {
@@ -738,7 +758,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const list = snapshot.docs.map(doc => doc.data() as PushNotification).filter((d: any) => d && !d._deleted);
         setNotifications(list);
       }
-    }, (err) => console.error('Firestore notifications err:', err));
+    }, (err) => logFirestoreListenerNotice('notifications', err));
 
     // 8. Custom HTML Blocks
     const unsubHtml = onSnapshot(collection(db, 'customHtmlBlocks'), (snapshot) => {
@@ -777,7 +797,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.error('Error saving customHtmlBlocks to localStorage:', e);
         }
       }
-    }, (err) => console.error('Firestore html blocks err:', err));
+    }, (err) => logFirestoreListenerNotice('customHtmlBlocks', err));
 
     // 9. Site Config (Safe Hydration & Zero-Overwrite)
     const unsubConfig = onSnapshot(doc(db, 'settings', 'siteConfig'), (snapshot) => {
@@ -825,7 +845,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
     }, (err) => {
-      console.error('Firestore siteConfig err:', err);
+      logFirestoreListenerNotice('siteConfig', err);
       // On network error, retain existing state without resetting
     });
 
@@ -856,7 +876,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.error(e);
         }
       }
-    }, (err) => console.error('Firestore tasks err:', err));
+    }, (err) => logFirestoreListenerNotice('crmTasks', err));
 
     // 11. Documents (Durable Cloud + IndexedDB Sync)
     const unsubDocs = onSnapshot(collection(db, 'documents'), (snapshot) => {
@@ -868,7 +888,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('imobipro_documents', JSON.stringify(list));
         } catch {}
       }
-    }, (err) => console.error('Firestore docs err:', err));
+    }, (err) => logFirestoreListenerNotice('documents', err));
 
     // 12. Audit Logs (Durable Cloud + IndexedDB Sync)
     const unsubAudit = onSnapshot(collection(db, 'auditLogs'), (snapshot) => {
@@ -881,7 +901,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           localStorage.setItem('imobipro_audit_logs', JSON.stringify(list));
         } catch {}
       }
-    }, (err) => console.error('Firestore audit err:', err));
+    }, (err) => logFirestoreListenerNotice('auditLogs', err));
 
     // 13. Configurable Options (Realtime Firestore + Offline Store)
     const unsubOptions = onSnapshot(collection(db, 'configurable_options'), (snapshot) => {
@@ -915,7 +935,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
     }, (err) => {
-      console.error('Firestore configurable options err:', err);
+      logFirestoreListenerNotice('configurableOptions', err);
       idbGetAll<ConfigurableOption>('configurableOptions').then(local => {
         if (local && local.length > 0) setConfigurableOptions(local);
       });

@@ -21,29 +21,60 @@ export interface ProcessedImageResult {
   dataUrl?: string;
 }
 
+let isAuthCheckDone = false;
+let isAuthAvailable = true;
+
 /**
  * Ensure Firebase Authentication is actively signed in before Storage or Firestore operations.
  */
 export async function ensureFirebaseAuth(): Promise<void> {
   if (auth.currentUser) return;
+  if (isAuthCheckDone && !isAuthAvailable) return;
+
   try {
     await signInWithEmailAndPassword(auth, 'joelsantanaimoveis@gmail.com', 'Joel@2026');
+    isAuthCheckDone = true;
+    isAuthAvailable = true;
   } catch (err: any) {
-    if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+    if (err?.code === 'auth/configuration-not-found') {
+      isAuthCheckDone = true;
+      isAuthAvailable = false;
+      console.info('[Firebase Auth] O serviço de Autenticação precisa ser ativado no Firebase Console (Guia "Authentication" -> "Começar"). O sistema está usando modo local seguro.');
+      return;
+    }
+
+    if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential' || err?.code === 'auth/invalid-email') {
       try {
         await createUserWithEmailAndPassword(auth, 'joelsantanaimoveis@gmail.com', 'Joel@2026');
-      } catch {
+        isAuthCheckDone = true;
+        isAuthAvailable = true;
+      } catch (createErr: any) {
+        if (createErr?.code === 'auth/configuration-not-found') {
+          isAuthCheckDone = true;
+          isAuthAvailable = false;
+          return;
+        }
         try {
           await signInAnonymously(auth);
-        } catch (anonErr) {
-          console.warn('[ImageUploadService] Auth fallback:', anonErr);
+          isAuthCheckDone = true;
+          isAuthAvailable = true;
+        } catch (anonErr: any) {
+          if (anonErr?.code === 'auth/configuration-not-found') {
+            isAuthCheckDone = true;
+            isAuthAvailable = false;
+          }
         }
       }
     } else {
       try {
         await signInAnonymously(auth);
-      } catch (anonErr) {
-        console.warn('[ImageUploadService] Anonymous fallback:', anonErr);
+        isAuthCheckDone = true;
+        isAuthAvailable = true;
+      } catch (anonErr: any) {
+        if (anonErr?.code === 'auth/configuration-not-found') {
+          isAuthCheckDone = true;
+          isAuthAvailable = false;
+        }
       }
     }
   }
