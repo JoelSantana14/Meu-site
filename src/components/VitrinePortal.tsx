@@ -8,6 +8,7 @@ import { ExclusiveLaunchModal } from './ExclusiveLaunchModal';
 import { PropertyGallery } from './PropertyGallery';
 import { FooterLeadCapture } from './FooterLeadCapture';
 import { ClientTestimonialsSection } from './ClientTestimonialsSection';
+import { VitrineModernLayout } from './VitrineModernLayout';
 import { getPropertyImageUrl } from '../utils/propertyImageHelper';
 import { getPropertyTypeLabel } from '../utils/propertyHelpers';
 import { AnimatedBlobs } from './AnimatedBlobs';
@@ -43,6 +44,7 @@ import {
   Home,
   Check,
   Sun,
+  Crown,
   Settings,
   UserCheck,
   PlusCircle,
@@ -120,6 +122,10 @@ export const VitrinePortal: React.FC = () => {
     setSelectedPropertyDetail,
     t
   } = useApp();
+
+  if (siteConfig.layoutPreset === 'minimalista_moderno') {
+    return <VitrineModernLayout />;
+  }
 
   // Search filter states
   const [purposeTab, setPurposeTab] = useState<PropertyPurpose | 'todos'>('venda');
@@ -599,7 +605,7 @@ export const VitrinePortal: React.FC = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-indigo-950/30" />
         </div>
 
-        {/* Hero Content (Clean Banner Headline with vertical position slider) */}
+        {/* Hero Content with Layout Preset adaptation */}
         <div 
           className="absolute left-1/2 z-10 max-w-4xl w-[90%] text-center space-y-6 transition-all duration-300"
           style={{
@@ -607,10 +613,25 @@ export const VitrinePortal: React.FC = () => {
             transform: 'translate(-50%, -50%)'
           }}
         >
+          {siteConfig.layoutPreset === 'corporativo_claro' && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-600/90 text-white font-black text-xs uppercase tracking-wider shadow-lg backdrop-blur-md mb-2 border border-blue-400/30">
+              <Building2 className="w-4 h-4 text-amber-300" />
+              <span>Portal Imobiliário Corporativo • CRECI 128.785-F</span>
+            </div>
+          )}
+          {siteConfig.layoutPreset === 'minimalista_luxo' && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 text-amber-400 font-black text-xs uppercase tracking-wider shadow-xl backdrop-blur-md mb-2 border border-amber-500/40">
+              <Crown className="w-4 h-4 text-amber-400" />
+              <span>Coleção Exclusiva Alto Padrão • Joel Santana</span>
+            </div>
+          )}
+
           {/* Main Display Headline with Transparency and Font Size Controls */}
           <div className="space-y-3">
             <h1
-              className="font-black text-white tracking-tight leading-tight drop-shadow-2xl transition-all select-none"
+              className={`font-black text-white tracking-tight leading-tight drop-shadow-2xl transition-all select-none ${
+                siteConfig.layoutPreset === 'minimalista_luxo' ? 'font-serif' : ''
+              }`}
               style={{
                 opacity: (siteConfig.heroTitleOpacity ?? 100) / 100,
                 fontSize: siteConfig.heroTitleFontSize ? `${siteConfig.heroTitleFontSize}px` : undefined

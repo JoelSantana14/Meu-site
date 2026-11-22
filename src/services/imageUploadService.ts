@@ -23,6 +23,7 @@ export interface ProcessedImageResult {
 
 let isAuthCheckDone = false;
 let isAuthAvailable = true;
+let isStorageBucketAvailable = true;
 
 /**
  * Ensure Firebase Authentication is actively signed in before Storage or Firestore operations.
@@ -146,30 +147,37 @@ export async function compressImageWithCanvas(
         // Draw and compress
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Prefer webp with jpeg fallback
-        const preferredType = 'image/jpeg';
+        // Prefer lightweight WebP format for modern browsers (Edge, Chrome, Safari) with JPEG fallback
+        const preferredType = 'image/webp';
         canvas.toBlob(
           (blob) => {
-            if (blob) {
+            if (blob && blob.size > 0) {
               const dataUrl = canvas.toDataURL(preferredType, quality);
               resolve({
                 blob,
                 mimeType: preferredType,
-                extension: 'jpg',
+                extension: 'webp',
                 width,
                 height,
                 dataUrl
               });
             } else {
-              const dataUrl = canvas.toDataURL(preferredType, quality);
-              resolve({
-                blob: file,
-                mimeType: preferredType,
-                extension: 'jpg',
-                width,
-                height,
-                dataUrl
-              });
+              const fallbackType = 'image/jpeg';
+              canvas.toBlob(
+                (fallbackBlob) => {
+                  const dataUrl = canvas.toDataURL(fallbackType, quality);
+                  resolve({
+                    blob: fallbackBlob || file,
+                    mimeType: fallbackType,
+                    extension: 'jpg',
+                    width,
+                    height,
+                    dataUrl
+                  });
+                },
+                fallbackType,
+                quality
+              );
             }
           },
           preferredType,
@@ -225,18 +233,43 @@ export async function uploadPropertyImagesConcurrently(
 
       let finalUrl = '';
 
-      try {
-        if (onProgress) {
-          onProgress(completed, total, `Enviando foto ${i + 1} de ${total} para o Firebase Storage...`);
+      if (isStorageBucketAvailable) {
+        try {
+          if (onProgress) {
+            onProgress(completed, total, `Enviando foto ${i + 1} de ${total} para o Firebase Storage...`);
+          }
+          // Cap retry time so unconfigured Storage buckets (Spark plan) fail fast
+          try {
+            storage.maxUploadRetryTime = 3500;
+          } catch {}
+          const storageRef = ref(storage, storagePath);
+          const uploadPromise = uploadBytes(storageRef, processed.blob, {
+            contentType: processed.mimeType
+          }).then(snap => getDownloadURL(snap.ref));
+
+          const timeoutPromise = new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error('storage-timeout')), 4000)
+          );
+
+          finalUrl = await Promise.race([uploadPromise, timeoutPromise]);
+        } catch (storageErr: any) {
+          const msg = String(storageErr?.message || storageErr?.code || '');
+          if (
+            msg.includes('storage-timeout') ||
+            msg.includes('not-found') ||
+            msg.includes('404') ||
+            msg.includes('retry-limit-exceeded') ||
+            msg.includes('unauthorized') ||
+            msg.includes('unauthenticated')
+          ) {
+            isStorageBucketAvailable = false;
+          }
+          console.info(`[UploadService] Storage indisponível para ${file.name}, salvando imagem WebP otimizada no Firestore.`);
         }
-        const storageRef = ref(storage, storagePath);
-        const uploadSnapshot = await uploadBytes(storageRef, processed.blob, {
-          contentType: processed.mimeType
-        });
-        finalUrl = await getDownloadURL(uploadSnapshot.ref);
-      } catch (storageErr) {
-        console.warn(`[UploadService] Storage upload failed for ${file.name}, using optimized fallback:`, storageErr);
-        // Fallback to compressed ~40KB Data URL so no photo is lost
+      }
+
+      if (!finalUrl) {
+        // Fallback to compressed ~40KB WebP Data URL so photos sync cleanly via Firestore without needing Blaze Storage
         if (processed.dataUrl) {
           finalUrl = processed.dataUrl;
         } else {

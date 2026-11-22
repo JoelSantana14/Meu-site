@@ -1,8 +1,15 @@
 export function getPropertyImageUrl(img: any): string {
   if (!img) return '';
-  if (typeof img === 'string') return img;
-  if (typeof img === 'object' && img.url) return img.url;
-  return '';
+  let url = '';
+  if (typeof img === 'string') url = img;
+  else if (typeof img === 'object' && img.url) url = img.url;
+
+  if (!url) return '';
+  if (url.includes('images.unsplash.com') && !url.includes('auto=format')) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}auto=format&fit=crop&q=80`;
+  }
+  return url;
 }
 
 export function getPropertyImagesList(propertyOrImages: any): string[] {

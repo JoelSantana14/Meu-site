@@ -1119,15 +1119,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(found);
 
     // Authenticate with Firebase Auth to satisfy firestore.rules (request.auth != null)
-    signInWithEmailAndPassword(auth, cleanEmail, cleanPass).catch(async (err) => {
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential' || err.code === 'auth/invalid-email') {
+    signInWithEmailAndPassword(auth, cleanEmail, cleanPass).catch(async (err: any) => {
+      if (err?.code === 'auth/configuration-not-found') {
+        return;
+      }
+      if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential' || err?.code === 'auth/invalid-email') {
         try {
           await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
-        } catch (createErr) {
-          console.warn('[FirebaseAuth] Could not auto-create Firebase Auth user:', createErr);
+        } catch (createErr: any) {
+          if (createErr?.code !== 'auth/configuration-not-found') {
+            console.warn('[FirebaseAuth] Could not auto-create Firebase Auth user:', createErr);
+          }
         }
       } else {
-        console.warn('[FirebaseAuth] Sign-in warning:', err);
+        if (err?.code !== 'auth/configuration-not-found') {
+          console.warn('[FirebaseAuth] Sign-in warning:', err);
+        }
       }
     });
 

@@ -468,7 +468,7 @@ export interface SiteConfig {
   heroTitleFontSize?: number; // Font size in px
   heroTitlePositionY?: number; // 0 to 100 (%) vertical position (0=Top, 50=Center, 80=Base)
   showBrokerPhotoOnProperties: boolean;
-  layoutPreset: 'clean_claro' | 'warm_claro' | 'corporativo_claro' | 'luxo_escuro' | 'banner_hero_destaques';
+  layoutPreset: 'clean_claro' | 'corporativo_claro' | 'minimalista_luxo' | 'minimalista_moderno' | 'warm_claro' | 'luxo_escuro' | 'banner_hero_destaques';
   // Dados do Corretor Autônomo
   brokerName?: string;
   brokerCreci?: string;

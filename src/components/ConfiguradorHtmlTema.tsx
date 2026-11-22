@@ -2403,6 +2403,102 @@ export const ConfiguradorHtmlTema: React.FC = () => {
               </div>
             </div>
 
+            {/* ==================== LAYOUT PRESET SELECTOR (3 OPTIONS) ==================== */}
+            <div className="space-y-4 pt-4 pb-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                    <Layout className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Escolha o Layout do Site (3 Opções Exclusivas)</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Selecione o estilo visual e estrutural do site público. A alteração é aplicada instantaneamente.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                {/* 1. Clean & Moderno */}
+                <div
+                  onClick={() => setLayoutPreset('clean_claro')}
+                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all space-y-2.5 bg-white dark:bg-slate-900 ${
+                    layoutPreset === 'clean_claro'
+                      ? 'border-indigo-600 ring-2 ring-indigo-500/20 shadow-md scale-[1.01]'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 opacity-80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-white">1. Clean & Moderno</span>
+                    {layoutPreset === 'clean_claro' && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                  </div>
+                  <div className="h-12 rounded-lg bg-slate-100 dark:bg-slate-800 p-2 flex flex-col justify-between border border-slate-200 dark:border-slate-700">
+                    <div className="w-1/2 h-2 bg-indigo-500 rounded-full" />
+                    <div className="flex gap-1">
+                      <div className="w-1/3 h-4 bg-white dark:bg-slate-700 rounded" />
+                      <div className="w-1/3 h-4 bg-white dark:bg-slate-700 rounded" />
+                      <div className="w-1/3 h-4 bg-white dark:bg-slate-700 rounded" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
+                    Estilo padrão com busca em pílulas, glassmorphism suave e foco em destaque fotográfico.
+                  </p>
+                </div>
+
+                {/* 2. Corporativo & Portal */}
+                <div
+                  onClick={() => setLayoutPreset('corporativo_claro')}
+                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all space-y-2.5 bg-white dark:bg-slate-900 ${
+                    layoutPreset === 'corporativo_claro'
+                      ? 'border-blue-600 ring-2 ring-blue-500/20 shadow-md scale-[1.01]'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-slate-400 opacity-80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-white">2. Corporativo & Portal</span>
+                    {layoutPreset === 'corporativo_claro' && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
+                  </div>
+                  <div className="h-12 rounded-lg bg-blue-50 dark:bg-blue-950/40 p-2 flex flex-col justify-between border border-blue-200 dark:border-blue-800">
+                    <div className="flex gap-1">
+                      <span className="text-[8px] px-1.5 py-0.5 bg-blue-600 text-white font-bold rounded">Comprar</span>
+                      <span className="text-[8px] px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded">Alugar</span>
+                    </div>
+                    <div className="h-2.5 bg-blue-600 rounded w-full" />
+                  </div>
+                  <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-tight">
+                    Estilo portal imobiliário profissional com abas de busca rápida e badges corporativos.
+                  </p>
+                </div>
+
+                {/* 3. Minimalista & Moderno (Landing Page Style) */}
+                <div
+                  onClick={() => setLayoutPreset('minimalista_moderno')}
+                  className={`p-4 rounded-2xl border-2 cursor-pointer transition-all space-y-2.5 bg-slate-950 text-white ${
+                    layoutPreset === 'minimalista_moderno'
+                      ? 'border-indigo-500 ring-2 ring-indigo-500/20 shadow-md scale-[1.01]'
+                      : 'border-slate-800 hover:border-slate-600 opacity-90'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-xs text-indigo-400 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>3. Minimalista & Moderno</span>
+                    </span>
+                    {layoutPreset === 'minimalista_moderno' && <CheckCircle2 className="w-4 h-4 text-indigo-400" />}
+                  </div>
+                  <div className="h-12 rounded-lg bg-slate-900 p-2 flex flex-col justify-between border border-indigo-500/30">
+                    <div className="w-2/3 h-2 bg-indigo-400 rounded-full" />
+                    <div className="flex gap-1">
+                      <div className="w-1/2 h-4 bg-slate-800 rounded border border-indigo-500/20" />
+                      <div className="w-1/2 h-4 bg-slate-800 rounded border border-indigo-500/20" />
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-tight">
+                    Estilo landing page de alta arquitetura com tipografia editorial, métricas e grade imersiva.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Presets Grid */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
